@@ -1,0 +1,20 @@
+{
+  "expect": "dropped",
+  "run_s": 20.0,
+  "raw_in": 187,
+  "published": 0,
+  "validity": {},
+  "ground_err_m": {
+    "max": null,
+    "median": null
+  },
+  "last_diag": {
+    "in": 180,
+    "out": 0,
+    "drops": {
+      "bad_frame": 180
+    },
+    "proc_ns": 47216
+  },
+  "problems": []
+}

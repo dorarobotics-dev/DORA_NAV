@@ -1,0 +1,24 @@
+{
+  "expect": "transformed",
+  "run_s": 60.0,
+  "raw_in": 586,
+  "published": 584,
+  "validity": {
+    "ok": 584
+  },
+  "ground_err_m": {
+    "max": 0.22108349204063416,
+    "median": 0.14251989871263504
+  },
+  "last_diag": {
+    "in": 580,
+    "out": 579,
+    "drops": {
+      "no_pose": 1
+    },
+    "proc_ns": 1180442
+  },
+  "problems": [
+    "ground error 0.221 m > 0.03"
+  ]
+}
