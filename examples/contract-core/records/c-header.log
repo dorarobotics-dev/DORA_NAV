@@ -1,22 +1,22 @@
 c_node: DEBUG    building node
 receiver: DEBUG    building node
-13:35:32 DEBUG  c_node: daemon::spawner spawning node
-13:35:32 DEBUG  receiver: daemon::spawner spawning node
-13:35:32 INFO   receiver: spawner spawning: "/home/demo/Public/github_dimos/.venv-exp/bin/python3" -u /home/demo/Public/github_dimos/dora/examples/c-header/receiver.py
+13:52:22 DEBUG  c_node: daemon::spawner spawning node
+13:52:22 DEBUG  receiver: daemon::spawner spawning node
+13:52:22 INFO   receiver: spawner spawning: "/home/demo/Public/github_dimos/.venv-exp/bin/python3" -u /home/demo/Public/github_dimos/dora/examples/c-header/receiver.py
 
-13:35:32 INFO   [dora]: dora daemon finished building nodes, spawning...
+13:52:22 INFO   [dora]: dora daemon finished building nodes, spawning...
 
-13:35:32 INFO   c_node: spawner spawning `/home/demo/Public/github_dimos/dora/examples/c-header/build/c_node` in `/home/demo/Public/github_dimos/dora/examples/c-header`
-13:35:32 DEBUG  c_node: spawner spawned node with pid 2081804
-13:35:32 INFO   receiver: spawner spawning `/home/demo/Public/github_dimos/.venv-exp/bin/python3` in `/home/demo/Public/github_dimos/dora/examples/c-header`
-13:35:32 DEBUG  receiver: spawner spawned node with pid 2081806
-13:35:32 INFO   c_node: daemon node is ready
-13:35:32 INFO   receiver: daemon node is ready
-13:35:32 INFO   [dora]: daemon all nodes are ready, starting dataflow
-13:35:33 stdout receiver: C_HEADER_OK
-13:35:33 DEBUG  c_node: daemon handling node stop with exit status Success (restart: false, restart_count: 0)
-13:35:33 INFO   c_node: daemon c_node finished successfully
-13:35:33 DEBUG  receiver: daemon handling node stop with exit status Success (restart: false, restart_count: 0)
-13:35:33 INFO   receiver: daemon receiver finished successfully
-13:35:33 INFO   [dora]: daemon dataflow finished on machine `01a19e30-5fd3-733e-82a5-b76abd6f3fea`
-[2m2026-11-02T21:35:33.437776Z[0m [32m INFO[0m [1mrun_inner[0m: [2mdora_daemon[0m[2m:[0m exiting daemon because all required dataflows are finished [2m[3mhealth_check_interval_duration[0m[2m=[0mNone [3mself.daemon_id[0m[2m=[0mDaemonId { machine_id: None, uuid: 01a19e30-5fd3-733e-82a5-b76abd6f3fea }[0m
+13:52:22 INFO   c_node: spawner spawning `/home/demo/Public/github_dimos/dora/examples/c-header/build/c_node` in `/home/demo/Public/github_dimos/dora/examples/c-header`
+13:52:22 DEBUG  c_node: spawner spawned node with pid 2140390
+13:52:22 INFO   receiver: spawner spawning `/home/demo/Public/github_dimos/.venv-exp/bin/python3` in `/home/demo/Public/github_dimos/dora/examples/c-header`
+13:52:22 DEBUG  receiver: spawner spawned node with pid 2140391
+13:52:22 INFO   c_node: daemon node is ready
+13:52:22 INFO   receiver: daemon node is ready
+13:52:22 INFO   [dora]: daemon all nodes are ready, starting dataflow
+13:52:23 stdout receiver: C_HEADER_OK
+13:52:23 DEBUG  c_node: daemon handling node stop with exit status Success (restart: false, restart_count: 0)
+13:52:23 INFO   c_node: daemon c_node finished successfully
+13:52:23 DEBUG  receiver: daemon handling node stop with exit status Success (restart: false, restart_count: 0)
+13:52:23 INFO   receiver: daemon receiver finished successfully
+13:52:23 INFO   [dora]: daemon dataflow finished on machine `01a19e3f-c8ee-71cb-8c02-d946d5a831cf`
+[2m2026-11-02T21:52:23.371120Z[0m [32m INFO[0m [1mrun_inner[0m: [2mdora_daemon[0m[2m:[0m exiting daemon because all required dataflows are finished [2m[3mhealth_check_interval_duration[0m[2m=[0mNone [3mself.daemon_id[0m[2m=[0mDaemonId { machine_id: None, uuid: 01a19e3f-c8ee-71cb-8c02-d946d5a831cf }[0m

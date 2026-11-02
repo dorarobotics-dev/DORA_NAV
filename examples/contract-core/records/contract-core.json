@@ -1,14 +1,15 @@
 {
   "expect": "transformed",
   "run_s": 60.0,
-  "raw_in": 586,
-  "published": 584,
+  "raw_in": 581,
+  "published": 579,
   "validity": {
-    "ok": 584
+    "ok": 579
   },
   "ground_err_m": {
-    "max": 0.22108349204063416,
-    "median": 0.14251989871263504
+    "median": 0.002931329421699047,
+    "p95": 0.00414672326296568,
+    "max": 0.08148348331451416
   },
   "last_diag": {
     "in": 580,
@@ -16,9 +17,7 @@
     "drops": {
       "no_pose": 1
     },
-    "proc_ns": 1180442
+    "proc_ns": 1229463
   },
-  "problems": [
-    "ground error 0.221 m > 0.03"
-  ]
+  "problems": []
 }

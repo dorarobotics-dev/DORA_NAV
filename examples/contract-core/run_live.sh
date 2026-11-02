@@ -29,10 +29,18 @@ mkdir -p records
 
 stripped=.stripped.yml
 trap 'rm -f "$here/$stripped"' EXIT
+failed=()
+
+# Runs one dataflow, tees its output to a log, and records a failure (without
+# stopping) unless the log contains the marker.
+run_one() { # name, log, marker, dir, dataflow, stop-after
+  local name=$1 log=$2 marker=$3
+  (cd "$4" && "$DORA" run "$5" --stop-after "$6") 2>&1 | tee "$log" || true
+  if grep -q "$marker" "$log"; then echo "PASS $name"; else echo "FAIL $name"; failed+=("$name"); fi
+}
 
 # 1. Good chain: 60 s of checking; stop-after leaves room for MuJoCo start-up.
-"$DORA" run good.yml --stop-after 100s 2>&1 | tee records/contract-core.log
-grep -q CHECKER_OK records/contract-core.log
+run_one good records/contract-core.log CHECKER_OK "$here" good.yml 100s
 
 # 2. Sim strips frame_id from the cloud: frame-transform must drop every input.
 # Kept next to good.yml so its relative paths still resolve.
@@ -41,11 +49,11 @@ sed -e 's/EXPECT: transformed/EXPECT: dropped/' \
     -e 's/^\( *\)MUJOCO_GL: egl$/&\n\1SIM_STRIP_CLOUD_FRAME: "1"/' \
     -e 's/RUN_SECONDS: "60"/RUN_SECONDS: "20"/' good.yml > "$stripped"
 grep -q 'SIM_STRIP_CLOUD_FRAME: "1"' "$stripped"
-"$DORA" run "$stripped" --stop-after 60s 2>&1 | tee records/contract-core-stripped.log
-grep -q CHECKER_OK records/contract-core-stripped.log
+run_one stripped records/contract-core-stripped.log CHECKER_OK "$here" "$stripped" 60s
 
 # 3. C node sending a header through dora_send_output_with_params.
 [[ -x $CHEADER/build/c_node ]] || "$CHEADER/build.sh"
-(cd "$CHEADER" && "$DORA" run dataflow.yml --stop-after 30s) 2>&1 | tee records/c-header.log
-grep -q C_HEADER_OK records/c-header.log
+run_one c-header "$here/records/c-header.log" C_HEADER_OK "$CHEADER" dataflow.yml 30s
+
+if (( ${#failed[@]} )); then echo "LIVE_RUNS_FAILED: ${failed[*]}"; exit 1; fi
 echo "LIVE_RUNS_OK"
