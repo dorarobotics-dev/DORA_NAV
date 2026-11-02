@@ -1,0 +1,20 @@
+apiVersion: 1
+name: mujoco-mickrobot
+namespace: dora-rs
+description: MuJoCo simulation of the MickRobot mobile base with lidar, camera, IMU, odometry and GNSS.
+categories: [simulator]
+keywords: [mujoco, sim, lidar]
+runtime: python
+entrypoint: scripts/run_mujoco_node.py
+build: pip install -e .
+dora: ">=1.1.0"
+inputs:
+  cmd_vel: {required: true, description: JSON velocity command.}
+outputs:
+  pointcloud: {description: "Legacy packed XYZI with a timestamp header, frame rslidar."}
+  image: {description: "Legacy RGB image, frame camera_front."}
+  imu: {description: "Legacy JSON IMU, frame imu_link."}
+  Odometry: {description: "Legacy JSON odometry, frame odom."}
+  gnss: {description: "Legacy JSON GNSS, frame map."}
+  cloud: {type: "std/media/v1/PointCloud[fields=xyzi]", description: "Lidar points in rslidar."}
+  odom_pose: {type: std/math/v1/Pose, description: "base_footprint in odom; child_frame in metadata."}

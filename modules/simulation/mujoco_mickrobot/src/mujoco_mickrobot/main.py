@@ -5,10 +5,12 @@ from __future__ import annotations
 import argparse
 from dataclasses import replace
 import logging
+import os
 from pathlib import Path
 import signal
 
 from .config import SimulationConfig, load_config
+from .contract import FRAME_NAMES, HeaderSource, cloud_array, pose_array
 from .dora_adapter import DoraAdapter
 from .messages import encode_gnss, encode_image, encode_imu, encode_odometry, encode_pointcloud
 from .model_loader import MODEL_PATH
@@ -28,19 +30,30 @@ def _bindings(config: SimulationConfig, simulator: MujocoSimulator) -> tuple[Sen
     result: list[SensorBinding] = []
     if config.lidar.enabled:
         lidar = LidarSensor(config.lidar, simulator, deterministic=deterministic, seed=seed + 1)
-        result.append(SensorBinding("pointcloud", config.lidar.rate_hz, lambda snapshot, timestamp: encode_pointcloud(timestamp, lidar.sample(simulator, timestamp)), True))
+        result.append(SensorBinding("pointcloud", config.lidar.rate_hz, lambda snapshot, timestamp: encode_pointcloud(timestamp, lidar.sample(simulator, timestamp)), True, frame=config.lidar.frame_id))
+        result.append(SensorBinding(
+            "cloud", config.lidar.rate_hz,
+            lambda snapshot, timestamp: (cloud_array(lidar.sample(simulator, timestamp)), {}),
+            True, frame=config.lidar.frame_id, typed=True))
     if config.camera.enabled:
         camera = CameraSensor(config.camera, simulator)
-        result.append(SensorBinding("image", config.camera.rate_hz, lambda snapshot, timestamp: encode_image(camera.sample(simulator, timestamp)), True, camera.close))
+        result.append(SensorBinding("image", config.camera.rate_hz, lambda snapshot, timestamp: encode_image(camera.sample(simulator, timestamp)), True, camera.close, frame=config.camera.frame_id))
     if config.imu.enabled:
         imu = ImuSensor(config.imu, deterministic=deterministic, seed=seed + 2)
-        result.append(SensorBinding("imu", config.imu.rate_hz, lambda snapshot, timestamp: encode_imu(imu.sample(snapshot, timestamp)), False))
+        result.append(SensorBinding("imu", config.imu.rate_hz, lambda snapshot, timestamp: encode_imu(imu.sample(snapshot, timestamp)), False, frame=config.imu.frame_id))
     if config.odometry.enabled:
         odometry = WheelOdometry(config.odometry, config.vehicle, deterministic=deterministic, seed=seed + 3)
-        result.append(SensorBinding("Odometry", config.odometry.rate_hz, lambda snapshot, timestamp: encode_odometry(odometry.sample(snapshot, timestamp)), False))
+        result.append(SensorBinding("Odometry", config.odometry.rate_hz, lambda snapshot, timestamp: encode_odometry(odometry.sample(snapshot, timestamp)), False, frame=config.odometry.frame_id))
+    if config.odometry.enabled:
+        def odom_pose(snapshot, timestamp):
+            sample = odometry.sample(snapshot, timestamp)
+            return (pose_array(sample.position_m, sample.orientation_xyzw),
+                    {"child_frame": FRAME_NAMES[sample.child_frame_id]})
+        result.append(SensorBinding("odom_pose", config.odometry.rate_hz, odom_pose, False,
+                                    frame=config.odometry.frame_id, typed=True))
     if config.gnss.enabled:
         gnss = GnssSensor(config.gnss, deterministic=deterministic, seed=seed + 4)
-        result.append(SensorBinding("gnss", config.gnss.rate_hz, lambda snapshot, timestamp: encode_gnss(gnss.sample(snapshot, timestamp)), False))
+        result.append(SensorBinding("gnss", config.gnss.rate_hz, lambda snapshot, timestamp: encode_gnss(gnss.sample(snapshot, timestamp)), False, frame="map"))
     return tuple(result)
 
 
@@ -67,7 +80,11 @@ def main() -> None:
         import dora
 
         adapter = DoraAdapter(dora.Node())
-        runtime = SimulationRuntime(config, simulator, adapter, VehicleController(config.vehicle), _bindings(config, simulator))
+        headers = HeaderSource(
+            source=os.environ.get("DORA_NODE_ID", "mujoco_mickrobot"),
+            strip_frame_on=("cloud",) if os.environ.get("SIM_STRIP_CLOUD_FRAME") == "1" else (),
+        )
+        runtime = SimulationRuntime(config, simulator, adapter, VehicleController(config.vehicle), _bindings(config, simulator), headers=headers)
     except Exception:
         simulator.close()
         raise

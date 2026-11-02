@@ -57,6 +57,9 @@ class DoraAdapter:
             raise DoraAdapterError("Dora INPUT event requires id and value")
         return InputEvent(str(event["id"]), _arrow_bytes(event["value"]))
 
-    def send(self, output_id: str, payload: bytes, timestamp_s: float) -> None:
+    def send(self, output_id: str, payload: bytes, metadata: dict) -> None:
         values = pa.array(np.frombuffer(payload, dtype=np.uint8), type=pa.uint8())
-        self._node.send_output(output_id, values, {"timestamp": float(timestamp_s)})
+        self._node.send_output(output_id, values, metadata)
+
+    def send_array(self, output_id: str, array: pa.Array, metadata: dict) -> None:
+        self._node.send_output(output_id, array, metadata)

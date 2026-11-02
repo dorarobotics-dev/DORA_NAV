@@ -8,6 +8,7 @@ import time
 from typing import Callable, Protocol
 
 from .config import SimulationConfig
+from .contract import HeaderSource
 from .dora_adapter import InputEvent, StopEvent
 from .scheduler import PeriodicSchedule
 from .simulator import SimulationSnapshot
@@ -29,16 +30,19 @@ class SimulatorProtocol(Protocol):
 
 class AdapterProtocol(Protocol):
     def poll(self, timeout_s: float): ...
-    def send(self, output_id: str, payload: bytes, timestamp_s: float) -> None: ...
+    def send(self, output_id: str, payload: bytes, metadata: dict) -> None: ...
+    def send_array(self, output_id: str, array, metadata: dict) -> None: ...
 
 
 @dataclass(frozen=True)
 class SensorBinding:
     output_id: str
     rate_hz: float
-    sample_and_encode: Callable[[SimulationSnapshot, float], bytes]
+    sample_and_encode: Callable[[SimulationSnapshot, float], object]
     expensive: bool
     close: Callable[[], None] | None = None
+    frame: str = "base_footprint"  # sim frame name, mapped by contract.FRAME_NAMES
+    typed: bool = False  # sample_and_encode returns (pa.Array, extra_meta) instead of bytes
 
 
 class RuntimeFailure(RuntimeError):
@@ -54,6 +58,7 @@ class SimulationRuntime:
         controller: VehicleController,
         bindings: tuple[SensorBinding, ...],
         *,
+        headers: HeaderSource | None = None,
         monotonic: Callable[[], float] = time.monotonic,
         sleep: Callable[[float], None] = time.sleep,
     ) -> None:
@@ -62,6 +67,7 @@ class SimulationRuntime:
         self.adapter = adapter
         self.controller = controller
         self.bindings = bindings
+        self.headers = headers if headers is not None else HeaderSource(source="mujoco_mickrobot")
         self._schedules = {binding.output_id: PeriodicSchedule(binding.rate_hz) for binding in bindings}
         self._failures = {binding.output_id: 0 for binding in bindings}
         self._monotonic = monotonic
@@ -96,9 +102,18 @@ class SimulationRuntime:
             if binding.expensive and due:
                 due = (due[-1],)
             for timestamp_s in due:
-                payload = binding.sample_and_encode(snapshot, timestamp_s)
+                result = binding.sample_and_encode(snapshot, timestamp_s)
                 try:
-                    self.adapter.send(binding.output_id, payload, timestamp_s)
+                    if binding.typed:
+                        array, extra = result
+                        self.adapter.send_array(
+                            binding.output_id, array,
+                            self.headers.header(binding.output_id, binding.frame, timestamp_s, **extra))
+                    else:
+                        self.adapter.send(
+                            binding.output_id, result,
+                            self.headers.header(binding.output_id, binding.frame, timestamp_s,
+                                                timestamp=float(timestamp_s)))
                 except Exception as exc:
                     self._failures[binding.output_id] += 1
                     LOGGER.error("Dora output %s failed (%d/%d): %s", binding.output_id, self._failures[binding.output_id], self.config.runtime.output_failure_limit, exc)
