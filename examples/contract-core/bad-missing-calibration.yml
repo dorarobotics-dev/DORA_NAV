@@ -1,0 +1,64 @@
+# Node paths: sim, driver, checker are .py files (dora runs them with the python
+# found by `uv python find` / PATH); dora-frame-transform is the venv console script.
+frames:
+  dictionary: ../../robots/mickrobot-sim/frames.yml
+  extrinsics: ../../robots/mickrobot-sim/extrinsics-no-base.yml
+nodes:
+  - id: driver
+    path: ../../modules/simulation/mujoco_mickrobot/tests/fixtures/cmd_vel_sender.py
+    inputs:
+      tick: dora/timer/millis/100
+      Odometry: sim/Odometry
+      imu: sim/imu
+    outputs: [cmd_vel]
+
+  - id: sim
+    path: ../../modules/simulation/mujoco_mickrobot/scripts/run_mujoco_node.py
+    inputs:
+      cmd_vel: driver/cmd_vel
+    outputs: [pointcloud, image, imu, Odometry, gnss, cloud, odom_pose]
+    output_types:
+      cloud: std/media/v1/PointCloud
+      odom_pose: std/math/v1/Pose
+    output_frames:
+      cloud: rslidar
+      odom_pose: odom
+    env:
+      MUJOCO_HEADLESS: "1"
+      MUJOCO_GL: egl
+      MUJOCO_MODEL_PATH: models/mickrobot.xml
+
+  - id: ft
+    path: /home/demo/Public/github_dimos/.venv-exp/bin/dora-frame-transform
+    inputs:
+      cloud: sim/cloud
+      pose: sim/odom_pose
+    input_types:
+      cloud: std/media/v1/PointCloud
+      pose: std/math/v1/Pose
+    input_frames:
+      cloud: any
+    outputs: [cloud, diag]
+    output_types:
+      cloud: std/media/v1/PointCloud
+    output_frames:
+      cloud: env:TARGET_FRAME
+      diag: none
+    env:
+      TARGET_FRAME: odom
+      POINT_FIELDS: xyzi
+      DORA_FRAMES: ../../robots/mickrobot-sim/frames.yml
+      DORA_EXTRINSICS: ../../robots/mickrobot-sim/extrinsics-no-base.yml
+
+  - id: checker
+    path: checker.py
+    inputs:
+      cloud: ft/cloud
+      diag: ft/diag
+      raw: sim/cloud
+    input_frames:
+      cloud: odom
+    env:
+      RUN_SECONDS: "60"
+      EXPECT: transformed
+      RECORD: records/contract-core.json
