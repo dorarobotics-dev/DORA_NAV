@@ -22,6 +22,25 @@ def test_stamp_is_exact_and_positive():
     assert stamp_ns(123.456) == 123_456_000_000
 
 
+def test_stamp_converts_an_epoch_time_and_keeps_adjacent_doubles_apart():
+    import math
+    assert stamp_ns(1729000000.5) == 1_729_000_000_500_000_000
+    x, stamps = 1729000000.0, []
+    for _ in range(60):
+        stamps.append(stamp_ns(x))
+        x = math.nextafter(x, math.inf)
+    assert len(set(stamps)) == len(stamps)
+
+
+def test_stamp_refuses_a_non_finite_time():
+    # Sim time starts at 0 and is clamped to the first legal stamp (1 ns);
+    # a time that is not a finite number never becomes a stamp.
+    with pytest.raises(ValueError):
+        stamp_ns(float("nan"))
+    with pytest.raises(OverflowError):
+        stamp_ns(float("inf"))
+
+
 def test_sim_frames_map_to_dictionary_names():
     assert FRAME_NAMES["lidar_link"] == "rslidar"
     assert FRAME_NAMES["camera_link"] == "camera_front"

@@ -5,12 +5,14 @@ once a pose has arrived, and the run's median per-cloud ground error (lowest
 10 % of points, |z| in odom) is at most 0.03 m.
 EXPECT=dropped: no cloud arrives; diag counts one bad_frame per input cloud.
 
-Ground error p95 and max are reported, not judged: a 2-D odometry pose and a
-rigidly mounted base_link cannot represent chassis pitch, so clouds taken while
-the body pitches carry an error the chain cannot remove (decided 2026-11-02).
-In the 2026-11-02 run the max (0.081 m) came from the spawn transient instead:
-the body starts at z = 0 and bounces to 0.17 m before resting at 0.0896 m
-(~0.5 s), which the planar pose cannot represent either; p95 was 0.004 m.
+The run is judged on the median ground error only, by decision of 2026-11-02;
+p95 and max are reported, not judged. In the 2026-11-02 run (579 clouds:
+median 0.0029 m, p95 0.0041 m, max 0.0815 m) the max is the spawn settling
+transient: the body starts at z = 0, bounces to 0.17 m and settles at
+0.0896 m within ~0.5 s with its orientation level; a planar odometry pose
+cannot represent that height change. Pitch is a real limitation of a yaw-only
+odom pose with a rigidly mounted base_link (a pitching chassis would add error
+the chain cannot remove), but no pitch was observed in this run.
 """
 import json
 import os
