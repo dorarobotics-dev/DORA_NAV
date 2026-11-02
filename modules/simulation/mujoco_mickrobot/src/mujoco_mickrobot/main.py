@@ -13,7 +13,7 @@ from .config import SimulationConfig, load_config
 from .contract import FRAME_NAMES, HeaderSource, cloud_array, pose_array
 from .dora_adapter import DoraAdapter
 from .messages import encode_gnss, encode_image, encode_imu, encode_odometry, encode_pointcloud
-from .model_loader import MODEL_PATH
+from .model_loader import resolve_model_path
 from .runtime import SensorBinding, SimulationRuntime
 from .sensors.camera import CameraSensor
 from .sensors.gnss import GnssSensor
@@ -69,9 +69,10 @@ def main() -> None:
     config = load_config(args.config)
     if args.headless or args.fastest:
         config = replace(config, runtime=replace(config.runtime, headless=args.headless or config.runtime.headless, fastest=args.fastest or config.runtime.fastest))
-    simulator = MujocoSimulator(config, MODEL_PATH)
+    model_path = resolve_model_path()
+    simulator = MujocoSimulator(config, model_path)
     if args.validate_model:
-        print(f"valid model: {MODEL_PATH} nq={simulator.model.nq} nv={simulator.model.nv} nu={simulator.model.nu}")
+        print(f"valid model: {model_path} nq={simulator.model.nq} nv={simulator.model.nv} nu={simulator.model.nu}")
         simulator.close()
         return
     if not config.runtime.headless:
