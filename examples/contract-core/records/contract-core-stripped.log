@@ -1,56 +1,54 @@
-  inferred std/media/v1/PointCloud on checker/cloud (from ft/cloud)
-  inferred std/media/v1/PointCloud on checker/raw (from sim/cloud)
 checker: DEBUG    building node
 driver: DEBUG    building node
 ft: DEBUG    building node
 sim: DEBUG    building node
-13:51:22 DEBUG  checker: daemon::spawner spawning node
-13:51:22 DEBUG  driver: daemon::spawner spawning node
-13:51:22 DEBUG  ft: daemon::spawner spawning node
-13:51:22 DEBUG  sim: daemon::spawner spawning node
-13:51:22 INFO   checker: spawner spawning: "/home/demo/Public/github_dimos/.venv-exp/bin/python3" -u /home/demo/Public/github_dimos/DORA_NAV/examples/contract-core/checker.py
-13:51:22 INFO   driver: spawner spawning: "/home/demo/Public/github_dimos/.venv-exp/bin/python3" -u /home/demo/Public/github_dimos/DORA_NAV/examples/contract-core/../../modules/simulation/mujoco_mickrobot/tests/fixtures/cmd_vel_sender.py
-13:51:22 INFO   sim: spawner spawning: "/home/demo/Public/github_dimos/.venv-exp/bin/python3" -u /home/demo/Public/github_dimos/DORA_NAV/examples/contract-core/../../modules/simulation/mujoco_mickrobot/scripts/run_mujoco_node.py
+17:57:20 DEBUG  checker: daemon::spawner spawning node
+17:57:20 DEBUG  driver: daemon::spawner spawning node
+17:57:20 DEBUG  ft: daemon::spawner spawning node
+17:57:20 DEBUG  sim: daemon::spawner spawning node
+17:57:20 INFO   checker: spawner spawning: "/home/demo/Public/github_dimos/.venv-exp/bin/python3" -u /home/demo/Public/github_dimos/DORA_NAV/examples/contract-core/checker.py
+17:57:21 INFO   driver: spawner spawning: "/home/demo/Public/github_dimos/.venv-exp/bin/python3" -u /home/demo/Public/github_dimos/DORA_NAV/examples/contract-core/../../modules/simulation/mujoco_mickrobot/tests/fixtures/cmd_vel_sender.py
+17:57:21 INFO   sim: spawner spawning: "/home/demo/Public/github_dimos/.venv-exp/bin/python3" -u /home/demo/Public/github_dimos/DORA_NAV/examples/contract-core/../../modules/simulation/mujoco_mickrobot/scripts/run_mujoco_node.py
 
-13:51:22 INFO   [dora]: dora daemon finished building nodes, spawning...
+17:57:21 INFO   [dora]: dora daemon finished building nodes, spawning...
 
-13:51:22 INFO   checker: spawner spawning `/home/demo/Public/github_dimos/.venv-exp/bin/python3` in `/home/demo/Public/github_dimos/DORA_NAV/examples/contract-core`
-13:51:22 DEBUG  checker: spawner spawned node with pid 2136518
-13:51:22 INFO   driver: spawner spawning `/home/demo/Public/github_dimos/.venv-exp/bin/python3` in `/home/demo/Public/github_dimos/DORA_NAV/examples/contract-core`
-13:51:22 DEBUG  driver: spawner spawned node with pid 2136519
-13:51:22 INFO   ft: spawner spawning `/home/demo/Public/github_dimos/.venv-exp/bin/dora-frame-transform` in `/home/demo/Public/github_dimos/DORA_NAV/examples/contract-core`
-13:51:22 DEBUG  ft: spawner spawned node with pid 2136520
-13:51:22 INFO   sim: spawner spawning `/home/demo/Public/github_dimos/.venv-exp/bin/python3` in `/home/demo/Public/github_dimos/DORA_NAV/examples/contract-core`
-13:51:22 DEBUG  sim: spawner spawned node with pid 2136521
-13:51:23 INFO   checker: daemon node is ready
-13:51:23 INFO   ft: daemon node is ready
-13:51:23 INFO   driver: daemon node is ready
-13:51:24 INFO   sim: daemon node is ready
-13:51:24 INFO   [dora]: daemon all nodes are ready, starting dataflow
-13:51:24 WARN   sim: zenoh_shm::watchdog::periodic_task Some("Watchdog Confirmator"): error setting scheduling priority for thread: OS(1), will run with priority 48. This is not an hard error and it can be safely ignored under normal operating conditions. Though the SHM subsystem may experience some timeouts in case of an heavy congested system where this watchdog thread may not be scheduled at the required frequency.
-13:51:24 WARN   sim: dora_node_api::node output `pointcloud`: 179976 B -> zenoh direct path (dora-rs/dora#2742 diagnostic)
-13:51:24 WARN   sim: dora_node_api::node output `pointcloud`: entering zenoh put of an SHM buffer (dora-rs/dora#2742 diagnostic)
-13:51:24 WARN   sim: dora_node_api::node output `pointcloud`: entering report_output_sent (dora-rs/dora#2742 diagnostic)
-13:51:24 WARN   sim: zenoh_shm::watchdog::periodic_task Some("Watchdog Validator"): error setting scheduling priority for thread: OS(1), will run with priority 48. This is not an hard error and it can be safely ignored under normal operating conditions. Though the SHM subsystem may experience some timeouts in case of an heavy congested system where this watchdog thread may not be scheduled at the required frequency.
-13:51:24 WARN   sim: dora_node_api::node output `cloud`: 160776 B -> zenoh direct path (dora-rs/dora#2742 diagnostic)
-13:51:24 WARN   sim: dora_node_api::node output `cloud`: entering zenoh put of an SHM buffer (dora-rs/dora#2742 diagnostic)
-13:51:24 WARN   sim: dora_node_api::node output `cloud`: entering report_output_sent (dora-rs/dora#2742 diagnostic)
-13:51:24 WARN   ft: zenoh_shm::watchdog::periodic_task Some("Watchdog Confirmator"): error setting scheduling priority for thread: OS(1), will run with priority 48. This is not an hard error and it can be safely ignored under normal operating conditions. Though the SHM subsystem may experience some timeouts in case of an heavy congested system where this watchdog thread may not be scheduled at the required frequency.
-13:51:24 WARN   checker: zenoh_shm::watchdog::periodic_task Some("Watchdog Confirmator"): error setting scheduling priority for thread: OS(1), will run with priority 48. This is not an hard error and it can be safely ignored under normal operating conditions. Though the SHM subsystem may experience some timeouts in case of an heavy congested system where this watchdog thread may not be scheduled at the required frequency.
-13:51:24 INFO   ft: dropping clouds as bad_frame: metadata carries no contract header; missing ['frame_id']
-13:51:24 WARN   sim: dora_node_api::node output `image`: 1037256 B -> zenoh direct path (dora-rs/dora#2742 diagnostic)
-13:51:24 WARN   sim: dora_node_api::node output `image`: entering zenoh put of an SHM buffer (dora-rs/dora#2742 diagnostic)
-13:51:24 WARN   sim: dora_node_api::node output `image`: entering report_output_sent (dora-rs/dora#2742 diagnostic)
-13:51:42 stdout checker: CHECKER_OK
-13:51:42 DEBUG  checker: daemon handling node stop with exit status Success (restart: false, restart_count: 0)
-13:51:42 INFO   checker: daemon checker finished successfully
-[2m2026-11-02T21:52:22.447611Z[0m [32m INFO[0m [2mdora_daemon[0m[2m:[0m stop-after timeout reached (60s) -> stopping dataflow
-[2m2026-11-02T21:52:22.447696Z[0m [32m INFO[0m [1mrun_inner[0m: [2mdora_daemon[0m[2m:[0m stopping after 60s as requested [2m[3mhealth_check_interval_duration[0m[2m=[0mNone [3mself.daemon_id[0m[2m=[0mDaemonId { machine_id: None, uuid: 01a19e3e-dd4d-710f-8ca0-6ee1370e2036 }[0m
-13:52:22 DEBUG  ft: daemon handling node stop with exit status Success (restart: false, restart_count: 0)
-13:52:22 INFO   ft: daemon ft finished successfully
-13:52:22 DEBUG  driver: daemon handling node stop with exit status Success (restart: false, restart_count: 0)
-13:52:22 INFO   driver: daemon driver finished successfully
-13:52:22 DEBUG  sim: daemon handling node stop with exit status Success (restart: false, restart_count: 0)
-13:52:22 INFO   sim: daemon sim finished successfully
-13:52:22 INFO   [dora]: daemon dataflow finished on machine `01a19e3e-dd4d-710f-8ca0-6ee1370e2036`
-[2m2026-11-02T21:52:22.739390Z[0m [32m INFO[0m [1mrun_inner[0m: [2mdora_daemon[0m[2m:[0m exiting daemon because all required dataflows are finished [2m[3mhealth_check_interval_duration[0m[2m=[0mNone [3mself.daemon_id[0m[2m=[0mDaemonId { machine_id: None, uuid: 01a19e3e-dd4d-710f-8ca0-6ee1370e2036 }[0m
+17:57:21 INFO   checker: spawner spawning `/home/demo/Public/github_dimos/.venv-exp/bin/python3` in `/home/demo/Public/github_dimos/DORA_NAV/examples/contract-core`
+17:57:21 DEBUG  checker: spawner spawned node with pid 3150906
+17:57:21 INFO   driver: spawner spawning `/home/demo/Public/github_dimos/.venv-exp/bin/python3` in `/home/demo/Public/github_dimos/DORA_NAV/examples/contract-core`
+17:57:21 DEBUG  driver: spawner spawned node with pid 3150907
+17:57:21 INFO   ft: spawner spawning `/home/demo/Public/github_dimos/.venv-exp/bin/dora-frame-transform` in `/home/demo/Public/github_dimos/DORA_NAV/examples/contract-core`
+17:57:21 DEBUG  ft: spawner spawned node with pid 3150908
+17:57:21 INFO   sim: spawner spawning `/home/demo/Public/github_dimos/.venv-exp/bin/python3` in `/home/demo/Public/github_dimos/DORA_NAV/examples/contract-core`
+17:57:21 DEBUG  sim: spawner spawned node with pid 3150909
+17:57:21 INFO   ft: daemon node is ready
+17:57:21 INFO   checker: daemon node is ready
+17:57:21 INFO   driver: daemon node is ready
+17:57:22 INFO   sim: daemon node is ready
+17:57:22 INFO   [dora]: daemon all nodes are ready, starting dataflow
+17:57:23 WARN   sim: zenoh_shm::watchdog::periodic_task Some("Watchdog Confirmator"): error setting scheduling priority for thread: OS(1), will run with priority 48. This is not an hard error and it can be safely ignored under normal operating conditions. Though the SHM subsystem may experience some timeouts in case of an heavy congested system where this watchdog thread may not be scheduled at the required frequency.
+17:57:23 WARN   sim: dora_node_api::node output `pointcloud`: 179976 B -> zenoh direct path (dora-rs/dora#2742 diagnostic)
+17:57:23 WARN   sim: dora_node_api::node output `pointcloud`: entering zenoh put of an SHM buffer (dora-rs/dora#2742 diagnostic)
+17:57:23 WARN   sim: dora_node_api::node output `pointcloud`: entering report_output_sent (dora-rs/dora#2742 diagnostic)
+17:57:23 WARN   sim: zenoh_shm::watchdog::periodic_task Some("Watchdog Validator"): error setting scheduling priority for thread: OS(1), will run with priority 48. This is not an hard error and it can be safely ignored under normal operating conditions. Though the SHM subsystem may experience some timeouts in case of an heavy congested system where this watchdog thread may not be scheduled at the required frequency.
+17:57:23 WARN   sim: dora_node_api::node output `cloud`: 160776 B -> zenoh direct path (dora-rs/dora#2742 diagnostic)
+17:57:23 WARN   sim: dora_node_api::node output `cloud`: entering zenoh put of an SHM buffer (dora-rs/dora#2742 diagnostic)
+17:57:23 WARN   sim: dora_node_api::node output `cloud`: entering report_output_sent (dora-rs/dora#2742 diagnostic)
+17:57:23 WARN   ft: zenoh_shm::watchdog::periodic_task Some("Watchdog Confirmator"): error setting scheduling priority for thread: OS(1), will run with priority 48. This is not an hard error and it can be safely ignored under normal operating conditions. Though the SHM subsystem may experience some timeouts in case of an heavy congested system where this watchdog thread may not be scheduled at the required frequency.
+17:57:23 WARN   checker: zenoh_shm::watchdog::periodic_task Some("Watchdog Confirmator"): error setting scheduling priority for thread: OS(1), will run with priority 48. This is not an hard error and it can be safely ignored under normal operating conditions. Though the SHM subsystem may experience some timeouts in case of an heavy congested system where this watchdog thread may not be scheduled at the required frequency.
+17:57:23 INFO   ft: dropping clouds as bad_frame: cloud carries no frame_id (got None)
+17:57:23 WARN   sim: dora_node_api::node output `image`: 1037256 B -> zenoh direct path (dora-rs/dora#2742 diagnostic)
+17:57:23 WARN   sim: dora_node_api::node output `image`: entering zenoh put of an SHM buffer (dora-rs/dora#2742 diagnostic)
+17:57:23 WARN   sim: dora_node_api::node output `image`: entering report_output_sent (dora-rs/dora#2742 diagnostic)
+17:57:41 stdout checker: CHECKER_OK
+17:57:41 DEBUG  checker: daemon handling node stop with exit status Success (restart: false, restart_count: 0)
+17:57:41 INFO   checker: daemon checker finished successfully
+[2m2026-11-03T01:58:20.928259Z[0m [32m INFO[0m [2mdora_daemon[0m[2m:[0m stop-after timeout reached (60s) -> stopping dataflow
+[2m2026-11-03T01:58:20.928407Z[0m [32m INFO[0m [1mrun_inner[0m: [2mdora_daemon[0m[2m:[0m stopping after 60s as requested [2m[3mhealth_check_interval_duration[0m[2m=[0mNone [3mself.daemon_id[0m[2m=[0mDaemonId { machine_id: None, uuid: 01a19f20-0f9d-7471-abe0-3598f8c7f648 }[0m
+17:58:20 DEBUG  ft: daemon handling node stop with exit status Success (restart: false, restart_count: 0)
+17:58:20 INFO   ft: daemon ft finished successfully
+17:58:21 DEBUG  driver: daemon handling node stop with exit status Success (restart: false, restart_count: 0)
+17:58:21 INFO   driver: daemon driver finished successfully
+17:58:21 DEBUG  sim: daemon handling node stop with exit status Success (restart: false, restart_count: 0)
+17:58:21 INFO   sim: daemon sim finished successfully
+17:58:21 INFO   [dora]: daemon dataflow finished on machine `01a19f20-0f9d-7471-abe0-3598f8c7f648`
+[2m2026-11-03T01:58:21.210308Z[0m [32m INFO[0m [1mrun_inner[0m: [2mdora_daemon[0m[2m:[0m exiting daemon because all required dataflows are finished [2m[3mhealth_check_interval_duration[0m[2m=[0mNone [3mself.daemon_id[0m[2m=[0mDaemonId { machine_id: None, uuid: 01a19f20-0f9d-7471-abe0-3598f8c7f648 }[0m

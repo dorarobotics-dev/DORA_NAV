@@ -1,13 +1,35 @@
 {
-  "expect": "dropped",
   "run_s": 20.0,
-  "raw_in": 181,
+  "expect": "dropped",
+  "raw_in": 180,
   "published": 0,
+  "drop_count": {
+    "raw": 178,
+    "published": 0,
+    "in_flight_ms": 200
+  },
   "validity": {},
+  "recompute": {
+    "checked": 0,
+    "unchecked": {},
+    "max_err_m": null,
+    "max_finite_err_m": null,
+    "pose_lag_ms": {
+      "min": null,
+      "max": null
+    }
+  },
+  "motion": {
+    "poses": 897,
+    "xy_m": 2.3006058686656368,
+    "yaw_rad": 9.22091696234382
+  },
   "ground_err_m": {
     "median": null,
     "p95": null,
-    "max": null
+    "max": null,
+    "max_after_settle": null,
+    "settle_s": 1.0
   },
   "last_diag": {
     "in": 180,
@@ -15,7 +37,9 @@
     "drops": {
       "bad_frame": 180
     },
-    "proc_ns": 51911
+    "items": 0,
+    "bytes": 1454656,
+    "proc_ns": 229907
   },
   "problems": []
 }

@@ -1,15 +1,37 @@
 {
-  "expect": "transformed",
   "run_s": 60.0,
-  "raw_in": 581,
+  "expect": "transformed",
+  "raw_in": 580,
   "published": 579,
+  "drop_count": {
+    "raw": 578,
+    "published": 577,
+    "in_flight_ms": 200
+  },
   "validity": {
     "ok": 579
   },
+  "recompute": {
+    "checked": 579,
+    "unchecked": {},
+    "max_err_m": 1.298238864423926e-06,
+    "max_finite_err_m": 1.298238864423926e-06,
+    "pose_lag_ms": {
+      "min": 20.0,
+      "max": 20.0
+    }
+  },
+  "motion": {
+    "poses": 2899,
+    "xy_m": 6.984521343087072,
+    "yaw_rad": 20.724157946662103
+  },
   "ground_err_m": {
-    "median": 0.002931329421699047,
-    "p95": 0.00414672326296568,
-    "max": 0.08148348331451416
+    "median": 0.0029492108151316643,
+    "p95": 0.004219123534858227,
+    "max": 0.08137214183807373,
+    "max_after_settle": 0.006396922282874584,
+    "settle_s": 1.0
   },
   "last_diag": {
     "in": 580,
@@ -17,7 +39,9 @@
     "drops": {
       "no_pose": 1
     },
-    "proc_ns": 1229463
+    "items": 115066,
+    "bytes": 1841216,
+    "proc_ns": 7861057
   },
   "problems": []
 }
