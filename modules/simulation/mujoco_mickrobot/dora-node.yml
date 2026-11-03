@@ -10,11 +10,20 @@ build: pip install -e .
 dora: ">=1.1.0"
 inputs:
   cmd_vel: {required: true, description: JSON velocity command.}
+# dora manifests have no field for frames, so each output's frame appears only in
+# its description (known gap). The contract header carries frame_id at run time.
+# Legacy outputs keep their payloads unchanged, so they still use the sim's frame
+# names: the JSON payloads (imu, Odometry, gnss) carry the configured frame_id
+# (gnss_link for gnss), and the binary pointcloud/image payloads carry no frame
+# (decode_image defaults to camera_link). The metadata frame_id carries the
+# frame-dictionary name (rslidar, camera_front, none); trust the metadata.
+# Outputs the dataflow does not declare are not produced; a sensor with no
+# declared output is not sampled.
 outputs:
-  pointcloud: {description: "Legacy packed XYZI with a timestamp header, frame rslidar."}
-  image: {description: "Legacy RGB image, frame camera_front."}
-  imu: {description: "Legacy JSON IMU, frame imu_link."}
-  Odometry: {description: "Legacy JSON odometry, frame odom."}
-  gnss: {description: "Legacy JSON GNSS, frame map."}
-  cloud: {type: "std/media/v1/PointCloud[fields=xyzi]", description: "Lidar points in rslidar."}
-  odom_pose: {type: std/math/v1/Pose, description: "base_footprint in odom; child_frame in metadata."}
+  pointcloud: {description: "Legacy packed XYZI with a timestamp header; metadata frame rslidar (sim name lidar_link)."}
+  image: {description: "Legacy RGB image; metadata frame camera_front (sim name camera_link)."}
+  imu: {description: "Legacy JSON IMU, frame imu_link (payload and metadata)."}
+  Odometry: {description: "Legacy JSON odometry, frame odom, child base_footprint (payload and metadata)."}
+  gnss: {description: "Legacy JSON GNSS fix in WGS84 lat/lon/alt; metadata frame none, payload frame_id gnss_link."}
+  cloud: {type: "std/media/v1/PointCloud[fields=xyzi]", description: "Lidar points in rslidar; the same scan as pointcloud."}
+  odom_pose: {type: std/math/v1/Pose, description: "base_footprint in odom; child_frame in metadata; the same sample as Odometry."}

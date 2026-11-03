@@ -10,11 +10,11 @@ from pathlib import Path
 import signal
 
 from .config import SimulationConfig, load_config
-from .contract import FRAME_NAMES, HeaderSource, cloud_array, pose_array
+from .contract import PRODUCER, HeaderSource, cloud_array, dictionary_frame, pose_array
 from .dora_adapter import DoraAdapter
 from .messages import encode_gnss, encode_image, encode_imu, encode_odometry, encode_pointcloud
 from .model_loader import resolve_model_path
-from .runtime import SensorBinding, SimulationRuntime
+from .runtime import OutputSpec, SensorBinding, SimulationRuntime
 from .sensors.camera import CameraSensor
 from .sensors.gnss import GnssSensor
 from .sensors.imu import ImuSensor
@@ -25,35 +25,41 @@ from .vehicle import VehicleController
 
 
 def _bindings(config: SimulationConfig, simulator: MujocoSimulator) -> tuple[SensorBinding, ...]:
+    """One binding per sensor: sampled once per tick, the sample feeding each of its outputs."""
     deterministic = config.runtime.deterministic
     seed = config.runtime.random_seed
     result: list[SensorBinding] = []
     if config.lidar.enabled:
         lidar = LidarSensor(config.lidar, simulator, deterministic=deterministic, seed=seed + 1)
-        result.append(SensorBinding("pointcloud", config.lidar.rate_hz, lambda snapshot, timestamp: encode_pointcloud(timestamp, lidar.sample(simulator, timestamp)), True, frame=config.lidar.frame_id))
-        result.append(SensorBinding(
-            "cloud", config.lidar.rate_hz,
-            lambda snapshot, timestamp: (cloud_array(lidar.sample(simulator, timestamp)), {}),
-            True, frame=config.lidar.frame_id, typed=True))
+        result.append(SensorBinding("lidar", config.lidar.rate_hz, lambda snapshot, timestamp: lidar.sample(simulator, timestamp), True, (
+            OutputSpec("pointcloud", config.lidar.frame_id, encode_pointcloud),
+            OutputSpec("cloud", config.lidar.frame_id, lambda timestamp, points: (cloud_array(points), {}), typed=True),
+        )))
     if config.camera.enabled:
         camera = CameraSensor(config.camera, simulator)
-        result.append(SensorBinding("image", config.camera.rate_hz, lambda snapshot, timestamp: encode_image(camera.sample(simulator, timestamp)), True, camera.close, frame=config.camera.frame_id))
+        result.append(SensorBinding("camera", config.camera.rate_hz, lambda snapshot, timestamp: camera.sample(simulator, timestamp), True, (
+            OutputSpec("image", config.camera.frame_id, lambda timestamp, sample: encode_image(sample)),
+        ), camera.close))
     if config.imu.enabled:
         imu = ImuSensor(config.imu, deterministic=deterministic, seed=seed + 2)
-        result.append(SensorBinding("imu", config.imu.rate_hz, lambda snapshot, timestamp: encode_imu(imu.sample(snapshot, timestamp)), False, frame=config.imu.frame_id))
+        result.append(SensorBinding("imu", config.imu.rate_hz, imu.sample, False, (
+            OutputSpec("imu", config.imu.frame_id, lambda timestamp, sample: encode_imu(sample)),
+        )))
     if config.odometry.enabled:
         odometry = WheelOdometry(config.odometry, config.vehicle, deterministic=deterministic, seed=seed + 3)
-        result.append(SensorBinding("Odometry", config.odometry.rate_hz, lambda snapshot, timestamp: encode_odometry(odometry.sample(snapshot, timestamp)), False, frame=config.odometry.frame_id))
-    if config.odometry.enabled:
-        def odom_pose(snapshot, timestamp):
-            sample = odometry.sample(snapshot, timestamp)
-            return (pose_array(sample.position_m, sample.orientation_xyzw),
-                    {"child_frame": FRAME_NAMES[sample.child_frame_id]})
-        result.append(SensorBinding("odom_pose", config.odometry.rate_hz, odom_pose, False,
-                                    frame=config.odometry.frame_id, typed=True))
+        child_frame = dictionary_frame(config.odometry.child_frame_id, "odometry.child_frame_id")
+        result.append(SensorBinding("odometry", config.odometry.rate_hz, odometry.sample, False, (
+            OutputSpec("Odometry", config.odometry.frame_id, lambda timestamp, sample: encode_odometry(sample)),
+            OutputSpec("odom_pose", config.odometry.frame_id,
+                       lambda timestamp, sample: (pose_array(sample.position_m, sample.orientation_xyzw),
+                                                  {"child_frame": child_frame}),
+                       typed=True),
+        )))
     if config.gnss.enabled:
         gnss = GnssSensor(config.gnss, deterministic=deterministic, seed=seed + 4)
-        result.append(SensorBinding("gnss", config.gnss.rate_hz, lambda snapshot, timestamp: encode_gnss(gnss.sample(snapshot, timestamp)), False, frame="map"))
+        result.append(SensorBinding("gnss", config.gnss.rate_hz, gnss.sample, False, (
+            OutputSpec("gnss", config.gnss.frame_id, lambda timestamp, sample: encode_gnss(sample)),
+        )))
     return tuple(result)
 
 
@@ -82,10 +88,13 @@ def main() -> None:
 
         adapter = DoraAdapter(dora.Node())
         headers = HeaderSource(
-            source=os.environ.get("DORA_NODE_ID", "mujoco_mickrobot"),
+            source=PRODUCER,
             strip_frame_on=("cloud",) if os.environ.get("SIM_STRIP_CLOUD_FRAME") == "1" else (),
         )
-        runtime = SimulationRuntime(config, simulator, adapter, VehicleController(config.vehicle), _bindings(config, simulator), headers=headers)
+        declared = adapter.declared_outputs()
+        if declared is None:
+            logging.getLogger(__name__).info("declared outputs unknown; producing every output")
+        runtime = SimulationRuntime(config, simulator, adapter, VehicleController(config.vehicle), _bindings(config, simulator), headers=headers, declared_outputs=declared)
     except Exception:
         simulator.close()
         raise

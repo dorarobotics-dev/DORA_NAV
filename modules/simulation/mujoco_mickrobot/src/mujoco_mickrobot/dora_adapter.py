@@ -61,5 +61,14 @@ class DoraAdapter:
         values = pa.array(np.frombuffer(payload, dtype=np.uint8), type=pa.uint8())
         self._node.send_output(output_id, values, metadata)
 
+    def declared_outputs(self) -> frozenset[str] | None:
+        """The outputs the dataflow declares for this node, or None when dora cannot say."""
+        try:
+            config = self._node.node_config()
+        except Exception:
+            return None
+        outputs = config.get("outputs") if isinstance(config, dict) else None
+        return None if outputs is None else frozenset(str(o) for o in outputs)
+
     def send_array(self, output_id: str, array: pa.Array, metadata: dict) -> None:
         self._node.send_output(output_id, array, metadata)

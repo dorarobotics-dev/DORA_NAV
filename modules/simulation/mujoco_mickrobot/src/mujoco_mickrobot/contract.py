@@ -11,8 +11,13 @@ from fractions import Fraction
 import numpy as np
 import pyarrow as pa
 
+# Every header names this producer. dora's Python API does not expose the node's
+# id in the dataflow (and dora sets no DORA_NODE_ID), so the source is a fixed name.
+PRODUCER = "mujoco_mickrobot"
+
 # sim model name -> frame dictionary name.
-# gnss_link has no dictionary frame; GNSS fixes are ENU positions in the world frame, so map.
+# GNSS fixes are WGS84 latitude/longitude/altitude, not positions in any frame of
+# the tree, so gnss_link maps to the frame-less sentinel `none`.
 FRAME_NAMES = {
     "lidar_link": "rslidar",
     "camera_link": "camera_front",
@@ -20,8 +25,23 @@ FRAME_NAMES = {
     "odom": "odom",
     "base_footprint": "base_footprint",
     "map": "map",
-    "gnss_link": "map",
+    "gnss_link": "none",
 }
+
+
+class UnknownFrame(ValueError):
+    """A configured sim frame has no frame-dictionary name."""
+
+
+def dictionary_frame(sim_frame: str, where: str = "") -> str:
+    """The dictionary name for a sim frame; refuses an unknown one, naming the known ones."""
+    try:
+        return FRAME_NAMES[sim_frame]
+    except KeyError:
+        at = f" ({where})" if where else ""
+        raise UnknownFrame(
+            f"sim frame {sim_frame!r}{at} has no frame-dictionary name; "
+            f"known sim frames: {', '.join(sorted(FRAME_NAMES))}") from None
 
 POINTCLOUD_TYPE = pa.struct([("points", pa.large_binary()), ("width", pa.uint32()), ("height", pa.uint32())])
 _VEC3 = pa.struct([("x", pa.float64()), ("y", pa.float64()), ("z", pa.float64())])

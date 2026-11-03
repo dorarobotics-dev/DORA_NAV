@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import logging
 import time
-from typing import Callable, Protocol
+from typing import Any, Callable, Collection, Protocol
 
 from .config import SimulationConfig
-from .contract import HeaderSource
+from .contract import PRODUCER, HeaderSource, dictionary_frame
 from .dora_adapter import InputEvent, StopEvent
 from .scheduler import PeriodicSchedule
 from .simulator import SimulationSnapshot
@@ -35,14 +35,25 @@ class AdapterProtocol(Protocol):
 
 
 @dataclass(frozen=True)
-class SensorBinding:
+class OutputSpec:
+    """One dora output fed by a sensor sample."""
+
     output_id: str
+    frame: str  # sim frame name, mapped by contract.FRAME_NAMES
+    encode: Callable[[float, Any], object]  # (timestamp, sample) -> bytes, or (pa.Array, extra_meta) when typed
+    typed: bool = False
+
+
+@dataclass(frozen=True)
+class SensorBinding:
+    """A sensor sampled once per due tick; every output encodes that one sample."""
+
+    name: str
     rate_hz: float
-    sample_and_encode: Callable[[SimulationSnapshot, float], object]
+    sample: Callable[[SimulationSnapshot, float], Any]
     expensive: bool
+    outputs: tuple[OutputSpec, ...]
     close: Callable[[], None] | None = None
-    frame: str = "base_footprint"  # sim frame name, mapped by contract.FRAME_NAMES
-    typed: bool = False  # sample_and_encode returns (pa.Array, extra_meta) instead of bytes
 
 
 class RuntimeFailure(RuntimeError):
@@ -59,6 +70,7 @@ class SimulationRuntime:
         bindings: tuple[SensorBinding, ...],
         *,
         headers: HeaderSource | None = None,
+        declared_outputs: Collection[str] | None = None,
         monotonic: Callable[[], float] = time.monotonic,
         sleep: Callable[[float], None] = time.sleep,
     ) -> None:
@@ -66,10 +78,24 @@ class SimulationRuntime:
         self.simulator = simulator
         self.adapter = adapter
         self.controller = controller
+        for binding in bindings:
+            for output in binding.outputs:
+                dictionary_frame(output.frame, f"output {output.output_id}")
+        self._all_bindings = bindings
+        # declared_outputs None means unknown: produce everything. Otherwise an
+        # output the dataflow does not declare is not encoded, and a sensor none
+        # of whose outputs is declared is not sampled at all.
+        if declared_outputs is not None:
+            declared = frozenset(declared_outputs)
+            bindings = tuple(
+                replace(binding, outputs=kept)
+                for binding in bindings
+                if (kept := tuple(o for o in binding.outputs if o.output_id in declared))
+            )
         self.bindings = bindings
-        self.headers = headers if headers is not None else HeaderSource(source="mujoco_mickrobot")
-        self._schedules = {binding.output_id: PeriodicSchedule(binding.rate_hz) for binding in bindings}
-        self._failures = {binding.output_id: 0 for binding in bindings}
+        self.headers = headers if headers is not None else HeaderSource(source=PRODUCER)
+        self._schedules = {binding.name: PeriodicSchedule(binding.rate_hz) for binding in bindings}
+        self._failures = {output.output_id: 0 for binding in bindings for output in binding.outputs}
         self._monotonic = monotonic
         self._sleep = sleep
         self._stop_requested = False
@@ -98,29 +124,34 @@ class SimulationRuntime:
     def _publish_due(self) -> None:
         snapshot = self.simulator.snapshot()
         for binding in self.bindings:
-            due = self._schedules[binding.output_id].due(self.simulator.time_s)
+            due = self._schedules[binding.name].due(self.simulator.time_s)
             if binding.expensive and due:
                 due = (due[-1],)
             for timestamp_s in due:
-                result = binding.sample_and_encode(snapshot, timestamp_s)
-                try:
-                    if binding.typed:
-                        array, extra = result
-                        self.adapter.send_array(
-                            binding.output_id, array,
-                            self.headers.header(binding.output_id, binding.frame, timestamp_s, **extra))
-                    else:
-                        self.adapter.send(
-                            binding.output_id, result,
-                            self.headers.header(binding.output_id, binding.frame, timestamp_s,
-                                                timestamp=float(timestamp_s)))
-                except Exception as exc:
-                    self._failures[binding.output_id] += 1
-                    LOGGER.error("Dora output %s failed (%d/%d): %s", binding.output_id, self._failures[binding.output_id], self.config.runtime.output_failure_limit, exc)
-                    if self._failures[binding.output_id] >= self.config.runtime.output_failure_limit:
-                        raise RuntimeFailure(f"Dora output {binding.output_id} failed repeatedly") from exc
-                else:
-                    self._failures[binding.output_id] = 0
+                sample = binding.sample(snapshot, timestamp_s)
+                for output in binding.outputs:
+                    self._send(output, timestamp_s, output.encode(timestamp_s, sample))
+
+    def _send(self, output: OutputSpec, timestamp_s: float, encoded: object) -> None:
+        output_id = output.output_id
+        try:
+            if output.typed:
+                array, extra = encoded
+                self.adapter.send_array(
+                    output_id, array,
+                    self.headers.header(output_id, output.frame, timestamp_s, **extra))
+            else:
+                self.adapter.send(
+                    output_id, encoded,
+                    self.headers.header(output_id, output.frame, timestamp_s,
+                                        timestamp=float(timestamp_s)))
+        except Exception as exc:
+            self._failures[output_id] += 1
+            LOGGER.error("Dora output %s failed (%d/%d): %s", output_id, self._failures[output_id], self.config.runtime.output_failure_limit, exc)
+            if self._failures[output_id] >= self.config.runtime.output_failure_limit:
+                raise RuntimeFailure(f"Dora output {output_id} failed repeatedly") from exc
+        else:
+            self._failures[output_id] = 0
 
     def _throttle(self) -> None:
         if self.config.runtime.fastest:
@@ -165,7 +196,7 @@ class SimulationRuntime:
         try:
             self.simulator.step(self.controller.stop())
         finally:
-            for binding in self.bindings:
+            for binding in self._all_bindings:
                 if binding.close is not None:
                     binding.close()
             self.simulator.close()

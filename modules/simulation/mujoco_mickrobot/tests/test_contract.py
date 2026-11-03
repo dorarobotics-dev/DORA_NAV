@@ -7,7 +7,7 @@ from mujoco_mickrobot.contract import (
     FRAME_NAMES, HeaderSource, cloud_array, pose_array, stamp_ns,
 )
 from mujoco_mickrobot.messages import encode_imu, encode_odometry, encode_pointcloud
-from mujoco_mickrobot.runtime import SensorBinding, SimulationRuntime
+from mujoco_mickrobot.runtime import OutputSpec, SensorBinding, SimulationRuntime
 from mujoco_mickrobot.sensors.imu import ImuSensor
 from mujoco_mickrobot.sensors.odometry import WheelOdometry
 from mujoco_mickrobot.simulator import SimulationSnapshot
@@ -122,17 +122,20 @@ def _run(strip=()):
     imu = ImuSensor(config.imu, deterministic=True, seed=2)
     cloud = np.array([[1, 2, 3, 4]], dtype=np.float32)
 
-    def odom_pose(snapshot, timestamp):
-        sample = odometry.sample(snapshot, timestamp)
-        return (pose_array(sample.position_m, sample.orientation_xyzw),
-                {"child_frame": FRAME_NAMES[sample.child_frame_id]})
-
     bindings = (
-        SensorBinding("pointcloud", 10.0, lambda s, t: encode_pointcloud(t, cloud), True, frame=config.lidar.frame_id),
-        SensorBinding("cloud", 10.0, lambda s, t: (cloud_array(cloud), {}), True,
-                      frame=config.lidar.frame_id, typed=True),
-        SensorBinding("imu", 50.0, lambda s, t: encode_imu(imu.sample(s, t)), False, frame=config.imu.frame_id),
-        SensorBinding("odom_pose", 20.0, odom_pose, False, frame=config.odometry.frame_id, typed=True),
+        SensorBinding("lidar", 10.0, lambda s, t: cloud, True, (
+            OutputSpec("pointcloud", config.lidar.frame_id, encode_pointcloud),
+            OutputSpec("cloud", config.lidar.frame_id, lambda t, p: (cloud_array(p), {}), typed=True),
+        )),
+        SensorBinding("imu", 50.0, imu.sample, False, (
+            OutputSpec("imu", config.imu.frame_id, lambda t, sample: encode_imu(sample)),
+        )),
+        SensorBinding("odometry", 20.0, odometry.sample, False, (
+            OutputSpec("odom_pose", config.odometry.frame_id,
+                       lambda t, sample: (pose_array(sample.position_m, sample.orientation_xyzw),
+                                          {"child_frame": FRAME_NAMES[sample.child_frame_id]}),
+                       typed=True),
+        )),
     )
     adapter = FakeAdapter()
     headers = HeaderSource(source="sim", strip_frame_on=strip)
