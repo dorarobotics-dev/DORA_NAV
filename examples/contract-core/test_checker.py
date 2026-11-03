@@ -198,3 +198,49 @@ def test_recompute_agrees_with_dora_transform():
     pts = np.array([[1.0, 2.0, 3.0, 0.5], [-4.0, 0.5, -0.4, 0.1]], dtype="<f4")
     lib = np.frombuffer(transform.apply_packed(pts.tobytes(), 4), dtype="<f4").reshape(-1, 4)
     np.testing.assert_allclose(apply(matrix(p, q) @ STATIC, pts), lib, atol=1e-5)
+
+
+def test_all_stale_with_pose_ignored_fails():
+    def ignore_and_stale(i, pose, meta, raw):
+        return apply(STATIC, raw), {**meta, "validity": "stale", "reason": "stale_pose"}
+    record = judge(run(mutate=ignore_and_stale))
+    # A stale cloud may have used any older pose, the identity at spawn included,
+    # so the recompute cannot catch this; the validity rules must.
+    assert any("no ok cloud" in p for p in record["problems"]), record["problems"]
+    assert any("stale clouds" in p for p in record["problems"]), record["problems"]
+
+
+def test_stale_for_most_then_ok_fails():
+    def mostly_stale(i, pose, meta, raw):
+        if i < 55:
+            meta = {**meta, "validity": "stale", "reason": "stale_pose"}
+        return apply(pose @ STATIC, raw), meta
+    record = judge(run(mutate=mostly_stale))
+    assert any("stale clouds" in p for p in record["problems"]), record["problems"]
+
+
+def test_ok_cloud_paired_with_a_future_pose_fails():
+    """The node only holds poses it has received, never one newer than the cloud."""
+    def next_pose(i, pose, meta, raw):
+        stamp = meta["stamp_ns"]
+        p, q = pose_at((stamp - 1) / 1e9 + 0.08)
+        return apply(matrix(p, q) @ STATIC, raw), meta
+    record = judge(run(mutate=next_pose))
+    assert any("differ from the independent" in p for p in record["problems"]), record["problems"]
+
+
+def _drop(indices):
+    def mutate(i, pose, meta, raw):
+        return (None if i in indices else apply(pose @ STATIC, raw)), meta
+    return mutate
+
+
+def test_clouds_in_flight_at_the_cut_off_are_not_drops():
+    # 61 raw clouds (i = 0..60); i = 0 has no pose; 59, 60 are still in flight.
+    record = judge(run(mutate=_drop({10, 20, 59, 60})))
+    assert record["problems"] == [], record["problems"]
+
+
+def test_drops_before_the_cut_off_still_count():
+    record = judge(run(mutate=_drop({10, 15, 20, 59, 60})))
+    assert any("published" in p for p in record["problems"]), record["problems"]

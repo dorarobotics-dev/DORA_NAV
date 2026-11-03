@@ -8,17 +8,22 @@ the collected events; `main()` only reads dora events and writes the record.
 EXPECT=transformed, every criterion must hold:
 - Frame and header: every cloud is in odom and carries header_seq (a missing
   one is a recorded problem, not a crash); header_seq strictly increases.
-- Validity: only `ok`, except `stale` before the first `ok` cloud.
+- Validity: at least one `ok` cloud; otherwise only `stale`, at most 3 clouds
+  and all before the first `ok` one.
 - Independent recomputation, judged on EVERY cloud: the raw cloud with the same
   stamp_ns is moved to odom in plain numpy (own quaternion code, not
   dora.transform) through the static chain base_footprint -> base_link ->
   rslidar read from robots/mickrobot-sim/extrinsics.yml and a sim pose. The
   node pairs a cloud with the latest pose it holds and calls it `ok` when the
-  stamps differ by at most POSE_MAX_AGE_MS; so for an `ok` cloud the
-  candidates are the poses within that age, for a `stale` cloud any pose. The
-  best candidate must reproduce every point to within 1e-3 m (xyz) with the
-  intensity unchanged. A pose ignored, inverted or taken from the wrong time
-  fails as soon as the robot has moved.
+  stamps differ by at most POSE_MAX_AGE_MS. The sim sends a tick's cloud
+  before that tick's pose, so the node never holds a pose stamped after the
+  cloud. The candidates are therefore the poses with
+  cloud stamp - POSE_MAX_AGE_MS <= pose stamp <= cloud stamp for an `ok`
+  cloud, and every pose stamped <= the cloud for a `stale` one (a stale
+  cloud may hold any older pose, so it is checked loosely; hence the cap on
+  stale clouds above). The best candidate must reproduce every point to
+  within 1e-3 m (xyz) with the intensity unchanged. A pose ignored, inverted
+  or taken from the wrong time fails as soon as the robot has moved.
 - Motion: over the run the pose moves at least 1.0 m in x/y from its first
   value and turns at least 0.5 rad, so the recomputation is pose-dependent.
   The driver (cmd_vel_sender.py) follows the test world's wall loop.
@@ -28,9 +33,14 @@ EXPECT=transformed, every criterion must hold:
   <= 0.03 m: the spawn transient (the body starts at z = 0, bounces to 0.17 m
   and settles at 0.0896 m within ~0.5 s; a planar odometry pose cannot
   represent that) is excluded, nothing after it.
-- Drops: published >= raw_in - 3, a diag was received, and its drops hold only
-  `no_pose` (at most 3). Other diag keys (items, bytes, proc_ns, ...) are
-  ignored.
+- Drops: counting only clouds stamped at least IN_FLIGHT_MS before the last
+  raw cloud (the newest raw clouds may still be inside frame_transform when
+  the checker stops; 2026-11-02 had 2 such), transformed >= raw - 3. A node
+  that stops publishing early is still caught: the cut-off follows the raw
+  stream, not the transformed one. A diag must have arrived, and its drops
+  hold only `no_pose` (at most 3); the other labels (bad_frame, bad_header,
+  malformed, bad_pose) fail the run. Other diag keys (items, bytes, proc_ns,
+  ...) are ignored.
 EXPECT=dropped: no cloud arrives; diag counts one bad_frame per input cloud.
 """
 import json
@@ -52,7 +62,8 @@ RECOMPUTE_TOL_M = 1e-3
 POSE_MAX_AGE_MS = 100  # dora_frame_transform.core.POSE_MAX_AGE_MS
 MIN_XY_M = 1.0
 MIN_YAW_RAD = 0.5
-DROP_CAP = 3
+DROP_CAP = 3  # also the cap on stale clouds
+IN_FLIGHT_MS = 200
 RAW_KEEP = 100  # raw clouds held for pairing (10 s at 10 Hz)
 
 
@@ -99,6 +110,8 @@ class Collector:
     def __init__(self, static):
         self.static = static
         self.raw_in = 0
+        self.raw_stamps = []
+        self.cloud_stamps = []
         self.raws = {}
         self.poses = []  # (stamp_ns, matrix, x, y, yaw)
         self.pending = []
@@ -112,6 +125,7 @@ class Collector:
         self.raw_in += 1
         stamp = (meta or {}).get("stamp_ns")
         if isinstance(stamp, int):
+            self.raw_stamps.append(stamp)
             self.raws[stamp] = pts
             if len(self.raws) > RAW_KEEP:
                 del self.raws[min(self.raws)]
@@ -146,6 +160,7 @@ class Collector:
         if stamp is None:
             self.unchecked["no stamp_ns"] += 1
         else:
+            self.cloud_stamps.append(stamp)
             self.pending.append((stamp, validity, pts))
 
     def _flush(self, newest_pose_stamp=None):
@@ -166,7 +181,8 @@ class Collector:
             self.unchecked[f"point count/layout changed {raw.shape} -> {out.shape}"] += 1
             return
         window = POSE_MAX_AGE_MS * 1_000_000
-        cands = [p for p in self.poses if validity != "ok" or abs(stamp - p[0]) <= window]
+        cands = [p for p in self.poses
+                 if p[0] <= stamp and (validity != "ok" or stamp - p[0] <= window)]
         if not cands:
             self.unchecked["no pose the node could have used"] += 1
             return
@@ -201,6 +217,13 @@ def judge(c, expect):
     turn = float(np.max(np.abs(yaws - yaws[0]))) if c.poses else 0.0
     published = len(c.validity)
     drops = c.last_diag.get("drops", {}) if isinstance(c.last_diag, dict) else {}
+    if c.raw_stamps:
+        cut = max(c.raw_stamps) - IN_FLIGHT_MS * 1_000_000
+        in_flight = sum(s > cut for s in c.raw_stamps)
+        counted_raw = c.raw_in - in_flight
+        counted_published = published - sum(s > cut for s in c.cloud_stamps)
+    else:
+        counted_raw, counted_published = c.raw_in, published
 
     if expect == "transformed":
         if not published:
@@ -215,10 +238,15 @@ def judge(c, expect):
         unexpected = Counter(v for v in c.validity if v not in ("ok", "stale"))
         if unexpected:
             problems.append(f"unexpected validity {dict(unexpected)}")
+        if published and "ok" not in c.validity:
+            problems.append("no ok cloud")
         first_ok = c.validity.index("ok") if "ok" in c.validity else published
         late_stale = sum(v == "stale" for v in c.validity[first_ok:])
         if late_stale:
             problems.append(f"{late_stale} stale clouds after the first ok cloud")
+        n_stale = c.validity.count("stale")
+        if n_stale > DROP_CAP:
+            problems.append(f"{n_stale} stale clouds > {DROP_CAP}")
         for why, n in c.unchecked.items():
             problems.append(f"recompute: {n} clouds not checkable: {why}")
         bad = sum(e > RECOMPUTE_TOL_M for e in c.errors)
@@ -235,8 +263,9 @@ def judge(c, expect):
         if settled and max(settled) > GROUND_TOL_M:
             problems.append(f"ground error {max(settled):.3f} m > {GROUND_TOL_M} on a cloud "
                             f">= {SETTLE_S} s after the first")
-        if published < c.raw_in - DROP_CAP:
-            problems.append(f"published {published} < raw_in {c.raw_in} - {DROP_CAP}")
+        if counted_published < counted_raw - DROP_CAP:
+            problems.append(f"published {counted_published} < raw_in {counted_raw} - {DROP_CAP} "
+                            f"(clouds stamped within {IN_FLIGHT_MS} ms of the last raw cloud not counted)")
         if not c.last_diag:
             problems.append("no diag received")
         for label, n in drops.items():
@@ -257,6 +286,7 @@ def judge(c, expect):
     lags = [lag for lag in c.lags if lag is not None]
     return {
         "expect": expect, "raw_in": c.raw_in, "published": published,
+        "drop_count": {"raw": counted_raw, "published": counted_published, "in_flight_ms": IN_FLIGHT_MS},
         "validity": dict(Counter(c.validity)),
         "recompute": {"checked": len(c.errors), "unchecked": dict(c.unchecked),
                       "max_err_m": max(c.errors, default=None) if all(map(math.isfinite, c.errors)) else "inf",

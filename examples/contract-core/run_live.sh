@@ -32,15 +32,39 @@ PYTHON=$VENV/bin/python ./make_model.sh
 mkdir -p records
 
 stripped=.stripped.yml
-trap 'rm -f "$here/$stripped"' EXIT
 failed=()
+RUN_PID=
 
-# Runs one dataflow, tees its output to a log, and records a failure (without
-# stopping) unless the log contains the marker. `timeout` is a backstop for a
-# run that ignores --stop-after: TERM 60 s after it, KILL 15 s after that.
+# Stops the running `dora run` the way Ctrl-C would. SIGINT is what dora run
+# handles (its ctrlc handler stops the dataflow and the daemon stops each node,
+# which runs in its own process group); SIGTERM would kill dora run outright
+# and orphan the nodes. `timeout` forwards the INT and SIGKILLs dora run 20 s
+# later if it has not exited; the group kill below is the last resort.
+stop_run() {
+  [[ -n $RUN_PID ]] || return 0
+  kill -INT "$RUN_PID" 2>/dev/null || return 0
+  for _ in $(seq 30); do kill -0 "$RUN_PID" 2>/dev/null || return 0; sleep 1; done
+  kill -KILL -- "-$RUN_PID" 2>/dev/null || true
+}
+trap 'stop_run; rm -f "$here/$stripped"' EXIT
+trap 'echo "interrupted; stopping dora run" >&2; exit 130' INT TERM
+
+# Runs one dataflow, shows its output while writing it to a log, and records a
+# failure (without stopping) unless the log contains the marker.
+# `timeout` is a backstop for a run that ignores --stop-after: SIGINT 60 s
+# after it, SIGKILL 20 s after that. It runs in the background in its own
+# process group (so a terminal Ctrl-C reaches only this script), and the INT/TERM
+# trap above stops it: nothing is left running after Ctrl-C.
 run_one() { # name, log, marker, dir, dataflow, stop-after (seconds)
   local name=$1 log=$2 marker=$3
-  (cd "$4" && timeout -k 15 $(( $6 + 60 )) "$DORA" run "$5" --stop-after "$6s") 2>&1 | tee "$log" || true
+  : >"$log"
+  (cd "$4" && exec timeout -s INT -k 20 $(( $6 + 60 )) "$DORA" run "$5" --stop-after "$6s") >"$log" 2>&1 &
+  RUN_PID=$!
+  tail -n +1 -f --pid="$RUN_PID" "$log" &
+  local tail_pid=$!
+  wait "$RUN_PID" || true
+  RUN_PID=
+  wait "$tail_pid" 2>/dev/null || true
   if grep -q "$marker" "$log"; then echo "PASS $name"; else echo "FAIL $name"; failed+=("$name"); fi
 }
 
