@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+from collections.abc import Collection
 from dataclasses import replace
 import logging
 import os
@@ -24,18 +25,40 @@ from .simulator import MujocoSimulator
 from .vehicle import VehicleController
 
 
-def _bindings(config: SimulationConfig, simulator: MujocoSimulator) -> tuple[SensorBinding, ...]:
-    """One binding per sensor: sampled once per tick, the sample feeding each of its outputs."""
+def _close_all(bindings) -> None:
+    for binding in bindings:
+        if binding.close is not None:
+            binding.close()
+
+
+def _bindings(config: SimulationConfig, simulator: MujocoSimulator,
+              declared: Collection[str] | None = None) -> tuple[SensorBinding, ...]:
+    """One binding per sensor: sampled once per tick, the sample feeding each of its outputs.
+
+    ``declared`` is the dataflow's declared outputs (None: unknown). The camera
+    renderer is only created when ``image`` may be declared. If a binding
+    fails (an unknown frame), the ones already made are closed first.
+    """
+    result: list[SensorBinding] = []
+    try:
+        _add_bindings(config, simulator, declared, result)
+    except Exception:
+        _close_all(result)
+        raise
+    return tuple(result)
+
+
+def _add_bindings(config: SimulationConfig, simulator: MujocoSimulator,
+                  declared: Collection[str] | None, result: list[SensorBinding]) -> None:
     deterministic = config.runtime.deterministic
     seed = config.runtime.random_seed
-    result: list[SensorBinding] = []
     if config.lidar.enabled:
         lidar = LidarSensor(config.lidar, simulator, deterministic=deterministic, seed=seed + 1)
         result.append(SensorBinding("lidar", config.lidar.rate_hz, lambda snapshot, timestamp: lidar.sample(simulator, timestamp), True, (
             OutputSpec("pointcloud", config.lidar.frame_id, encode_pointcloud),
             OutputSpec("cloud", config.lidar.frame_id, lambda timestamp, points: (cloud_array(points), {}), typed=True),
         )))
-    if config.camera.enabled:
+    if config.camera.enabled and (declared is None or "image" in declared):
         camera = CameraSensor(config.camera, simulator)
         result.append(SensorBinding("camera", config.camera.rate_hz, lambda snapshot, timestamp: camera.sample(simulator, timestamp), True, (
             OutputSpec("image", config.camera.frame_id, lambda timestamp, sample: encode_image(sample)),
@@ -60,7 +83,18 @@ def _bindings(config: SimulationConfig, simulator: MujocoSimulator) -> tuple[Sen
         result.append(SensorBinding("gnss", config.gnss.rate_hz, gnss.sample, False, (
             OutputSpec("gnss", config.gnss.frame_id, lambda timestamp, sample: encode_gnss(sample)),
         )))
-    return tuple(result)
+
+
+def _runtime(config: SimulationConfig, simulator, adapter, *,
+             declared: Collection[str] | None, headers: HeaderSource | None = None) -> SimulationRuntime:
+    """The runtime over fresh bindings; the bindings are closed if it refuses them."""
+    bindings = _bindings(config, simulator, declared)
+    try:
+        return SimulationRuntime(config, simulator, adapter, VehicleController(config.vehicle), bindings,
+                                 headers=headers, declared_outputs=declared)
+    except Exception:
+        _close_all(bindings)
+        raise
 
 
 def main() -> None:
@@ -94,7 +128,7 @@ def main() -> None:
         declared = adapter.declared_outputs()
         if declared is None:
             logging.getLogger(__name__).info("declared outputs unknown; producing every output")
-        runtime = SimulationRuntime(config, simulator, adapter, VehicleController(config.vehicle), _bindings(config, simulator), headers=headers, declared_outputs=declared)
+        runtime = _runtime(config, simulator, adapter, declared=declared, headers=headers)
     except Exception:
         simulator.close()
         raise

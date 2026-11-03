@@ -4,7 +4,7 @@ import pytest
 
 from mujoco_mickrobot.config import load_config
 from mujoco_mickrobot.contract import (
-    FRAME_NAMES, HeaderSource, cloud_array, pose_array, stamp_ns,
+    FRAME_NAMES, HeaderSource, UnknownFrame, cloud_array, pose_array, stamp_ns,
 )
 from mujoco_mickrobot.messages import encode_imu, encode_odometry, encode_pointcloud
 from mujoco_mickrobot.runtime import OutputSpec, SensorBinding, SimulationRuntime
@@ -57,7 +57,7 @@ def test_header_source_counts_per_output_and_maps_frames():
 
 
 def test_unknown_sim_frame_is_refused():
-    with pytest.raises(KeyError):
+    with pytest.raises(UnknownFrame, match=r"'somewhere' \(output x\).*known sim frames"):
         HeaderSource(source="s").header("x", "somewhere", 0.1)
 
 

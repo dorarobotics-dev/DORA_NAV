@@ -61,7 +61,7 @@ class HeaderSource:
     _seq: dict[str, int] = field(default_factory=dict)
 
     def header(self, output_id: str, sim_frame: str, timestamp_s: float, **extra) -> dict:
-        frame = FRAME_NAMES[sim_frame]
+        frame = dictionary_frame(sim_frame, f"output {output_id}")
         seq = self._seq.get(output_id, 0)
         self._seq[output_id] = seq + 1
         meta = {"frame_id": frame, "header_seq": seq, "stamp_ns": stamp_ns(timestamp_s),

@@ -172,3 +172,62 @@ def test_adapter_reads_declared_outputs_from_the_node_config():
     assert DoraAdapter(_Node({"outputs": []})).declared_outputs() == frozenset()
     assert DoraAdapter(_Node({})).declared_outputs() is None
     assert DoraAdapter(_Node(RuntimeError("no config"))).declared_outputs() is None
+
+
+class _Camera:
+    made: list["_Camera"]
+
+    def __init__(self, config, simulator):
+        self.closed = 0
+        _Camera.made.append(self)
+
+    def sample(self, simulator, timestamp_s):
+        raise AssertionError("not sampled in these tests")
+
+    def close(self):
+        self.closed += 1
+
+
+@pytest.fixture
+def camera(monkeypatch):
+    from mujoco_mickrobot import main
+    _Camera.made = []
+    monkeypatch.setattr(main, "CameraSensor", _Camera)
+    return _Camera.made
+
+
+def _with_camera(config):
+    return replace(config, camera=replace(config.camera, enabled=True))
+
+
+def test_camera_is_not_created_when_image_is_not_declared(camera):
+    config = _with_camera(_config())
+    assert [b.name for b in _bindings(config, Sim(), declared={"cloud"})] == ["lidar", "odometry"]
+    assert camera == []
+    _bindings(config, Sim(), declared={"image"})
+    _bindings(config, Sim(), declared=None)
+    assert len(camera) == 2
+
+
+def test_camera_is_closed_when_a_later_binding_fails(camera):
+    config = _with_camera(_config(odom_child="chassis"))
+    with pytest.raises(UnknownFrame, match="chassis"):
+        _bindings(config, Sim())
+    assert [c.closed for c in camera] == [1]
+
+
+def test_camera_is_closed_when_the_runtime_refuses_a_frame(camera):
+    from mujoco_mickrobot.main import _runtime
+    config = _with_camera(_config(lidar_frame="velodyne"))
+    with pytest.raises(UnknownFrame, match="velodyne"):
+        _runtime(config, Sim(), Adapter(), declared=None)
+    assert [c.closed for c in camera] == [1]
+
+
+def test_close_reaches_a_sensor_whose_outputs_were_all_filtered_out(camera):
+    config = _with_camera(_config(lidar=False))
+    runtime = SimulationRuntime(config, Sim(), Adapter(), VehicleController(config.vehicle),
+                                _bindings(config, Sim()), declared_outputs={"odom_pose"})
+    assert [b.name for b in runtime.bindings] == ["odometry"]
+    runtime.close()
+    assert [c.closed for c in camera] == [1]
