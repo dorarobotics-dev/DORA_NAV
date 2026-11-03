@@ -1,5 +1,7 @@
 # Node paths: sim, driver, checker are .py files (dora runs them with the python
-# found by `uv python find` / PATH); dora-frame-transform is the venv console script.
+# found by `uv python find` / PATH); dora-frame-transform is the console script
+# found on PATH (dora does not expand env vars in `path`): run_validate.sh and
+# run_live.sh put $VENV/bin first on PATH.
 frames:
   dictionary: ../../robots/mickrobot-sim/frames.yml
   extrinsics: ../../robots/mickrobot-sim/extrinsics.yml
@@ -18,7 +20,7 @@ nodes:
       cmd_vel: driver/cmd_vel
     outputs: [pointcloud, image, imu, Odometry, gnss, cloud, odom_pose]
     output_types:
-      cloud: std/media/v1/PointCloud
+      cloud: "std/media/v1/PointCloud[fields=xyzi]"
       odom_pose: std/math/v1/Pose
     output_frames:
       cloud: rslidar
@@ -29,18 +31,18 @@ nodes:
       MUJOCO_MODEL_PATH: models/mickrobot.xml
 
   - id: ft
-    path: /home/demo/Public/github_dimos/.venv-exp/bin/dora-frame-transform
+    path: dora-frame-transform
     inputs:
       cloud: sim/cloud
       pose: sim/odom_pose
     input_types:
-      cloud: std/media/v1/PointCloud
+      cloud: "std/media/v1/PointCloud[fields=xyzi]"
       pose: std/math/v1/Pose
     input_frames:
       cloud: any
     outputs: [cloud, diag]
     output_types:
-      cloud: std/media/v1/PointCloud
+      cloud: "std/media/v1/PointCloud[fields=xyzi]"
     output_frames:
       cloud: env:TARGET_FRAME
       diag: none
@@ -55,8 +57,14 @@ nodes:
     inputs:
       cloud: ft/cloud
       diag: ft/diag
-      raw: sim/cloud
+      raw: {source: sim/cloud, queue_size: 100}
+      pose: {source: sim/odom_pose, queue_size: 500}
+    input_types:
+      cloud: "std/media/v1/PointCloud[fields=xyzi]"
+      raw: "std/media/v1/PointCloud[fields=xyzi]"
+      pose: std/math/v1/Pose
     input_frames:
+      pose: odom
       cloud: base_link
     env:
       RUN_SECONDS: "60"

@@ -3,7 +3,7 @@
 # absolute /home/mickrobot paths). good.yml points the sim at it via MUJOCO_MODEL_PATH.
 set -euo pipefail
 here=$(cd "$(dirname "$0")" && pwd)
-py=${PYTHON:-/home/demo/Public/github_dimos/.venv-exp/bin/python}
+py=${PYTHON:-${VENV:-/home/demo/Public/github_dimos/.venv-exp}/bin/python}
 mod="$here/../../modules/simulation/mujoco_mickrobot"
 mkdir -p "$here/models"
 "$py" - "$mod" "$here/models/mickrobot.xml" <<'PY'

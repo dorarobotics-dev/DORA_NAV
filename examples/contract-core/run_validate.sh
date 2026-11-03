@@ -2,7 +2,12 @@
 # Accept good.yml; refuse each bad-*.yml with its reason.
 set -uo pipefail
 here=$(cd "$(dirname "$0")" && pwd)
-dora=${DORA:-/home/demo/Public/github_dimos/dora/target/release/dora}
+# Overridable: DORA_ROOT (the dora checkout), DORA (its CLI), VENV (holds the
+# dora-frame-transform console script the dataflows name by bare command).
+DORA_ROOT=${DORA_ROOT:-/home/demo/Public/github_dimos/dora}
+dora=${DORA:-$DORA_ROOT/target/release/dora}
+VENV=${VENV:-/home/demo/Public/github_dimos/.venv-exp}
+export PATH=$VENV/bin:$PATH
 fail=0
 expect() { # file, expected-exit (0|1), grep pattern
   out=$("$dora" validate "$here/$1" 2>&1); code=$?
