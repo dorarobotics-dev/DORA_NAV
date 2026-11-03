@@ -1,18 +1,20 @@
-# Frame dictionary. The other half of contract item 14's 端口与坐标系字典.
+# Frame dictionary (DORA_FRAMES), copied from the reference contract's
+# frames.yaml with its frame entries unchanged.
 #
-# `parent` records the tree the fleet intends. Since 1.1.0 it is load-bearing:
-# `kind` says how a frame relates to its parent, and per-robot extrinsics
-# (robots/<name>/extrinsics.yaml) may calibrate only `mounted` edges.
+# `parent` records the tree the fleet intends. `kind` says how a frame relates
+# to its parent, and per-robot extrinsics (robots/<name>/extrinsics.yml) may
+# calibrate only `mounted` edges.
 #
-# The envelope and the validator still NEVER transform. A frame change happens
-# only inside an operator that declares it, through
-# open_robot_operator.transform, against a calibration the validator has
-# checked. See docs/superpowers/specs/2026-10-20-coordinate-transformation-design.md.
+# Headers and `dora validate` never transform. A frame change happens only
+# inside a node that declares it (dora-frame-transform), through dora.transform,
+# against the calibration `dora validate` has checked (the dataflow's
+# `frames.extrinsics`, passed to the node as DORA_EXTRINSICS).
 #
 # kind:
 #   fixed    a root that does not move
 #   dynamic  its pose relative to its parent changes at run time; it comes
-#            from a published openrobot.state.pose message, never from a file
+#            from a published std/math/v1/Pose message (child_frame in its
+#            metadata), never from a file
 #   mounted  rigidly attached to its parent; calibrated per robot
 #   none     the frame-less sentinel; never part of a transform
 contract_version: 1.1.0

@@ -1,5 +1,5 @@
 # Extrinsic calibration of the simulated mobile robot. Each entry is the pose
-# of `child` in `parent`, for mounted frames only (frames.yaml `kind`).
+# of `child` in `parent`, for mounted frames only (frames.yml `kind`).
 #
 # Values measured from the model the sim actually loads: the one
 # examples/contract-core/make_model.sh generates from the URDF with
@@ -15,7 +15,7 @@
 #               no rpy, so identity (the continuous joint spins about z and is
 #               held by damping; the lidar site has identity orientation).
 #   camera      mujoco_extensions.xml:10-12  camera_link pos="0.40 0 0.35", and
-#               xyaxes="0 -1 0 0 0 1". MuJoCo cameras look along -z; frames.yaml's
+#               xyaxes="0 -1 0 0 0 1". MuJoCo cameras look along -z; frames.yml's
 #               optical frame looks along +z with y down, so the optical axes in
 #               base_link are x=(0,-1,0), y=(0,0,-1), z=(1,0,0), which is the
 #               quaternion (-0.5, 0.5, -0.5, 0.5) in x, y, z, w.
