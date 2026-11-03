@@ -4,7 +4,7 @@ set -uo pipefail
 here=$(cd "$(dirname "$0")" && pwd)
 # Overridable: DORA_ROOT (the dora checkout), DORA (its CLI), VENV (holds the
 # dora-frame-transform console script the dataflows name by bare command).
-DORA_ROOT=${DORA_ROOT:-/home/demo/Public/github_dimos/dora}
+DORA_ROOT=${DORA_ROOT:-/home/demo/Public/github_dorarobotics_dev/dora}
 dora=${DORA:-$DORA_ROOT/target/release/dora}
 VENV=${VENV:-/home/demo/Public/github_dimos/.venv-exp}
 export PATH=$VENV/bin:$PATH

@@ -14,7 +14,7 @@ set -euo pipefail
 here=$(cd "$(dirname "$0")" && pwd)
 # Overridable: DORA_ROOT (the dora checkout), DORA (its CLI), VENV (python env
 # with dora and the dora-frame-transform console script, put first on PATH).
-DORA_ROOT=${DORA_ROOT:-/home/demo/Public/github_dimos/dora}
+DORA_ROOT=${DORA_ROOT:-/home/demo/Public/github_dorarobotics_dev/dora}
 DORA=${DORA:-$DORA_ROOT/target/release/dora}
 VENV=${VENV:-/home/demo/Public/github_dimos/.venv-exp}
 CHEADER=$DORA_ROOT/examples/c-header
