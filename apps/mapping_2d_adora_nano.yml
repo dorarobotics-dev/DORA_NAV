@@ -1,0 +1,44 @@
+nodes:
+  - id: ydlidar_tmini_plus
+    path: ../build/modules/drivers/ydlidar_tmini_plus/ydlidar_tmini_plus_dora_node
+    env:
+      CONFIG_FILE: ../modules/drivers/ydlidar_tmini_plus/config/config.yaml
+      SERIAL_PORT: /dev/ttyUSB0
+    inputs:
+      tick: dora/timer/millis/100
+    outputs:
+      - LaserScan
+
+  # Adora Nano Feetech Kiwi chassis supplies feedback odometry.
+  # Device paths and calibration values must match the physical robot.
+  # This mapping example does not connect a velocity command producer.
+  - id: feetech_kiwi_chassis
+    path: ../build/modules/chassis/feetech_kiwi_chassis_dora_node/feetech-kiwi-chassis-sdk-node
+    env:
+      SERIAL_PORT: /dev/ttyUSB1
+      SERIAL_BAUD: "1000000"
+      WHEEL_IDS: "9,8,7"
+      WHEEL_ANGLES_DEG: "60,180,300"
+      LINEAR_TICKS_PER_MPS: "13350"
+      ANGULAR_TICKS_PER_RADPS: "1660"
+      SPEED_LIMIT: "1500"
+      ODOM_SOURCE: feedback
+      CMD_VEL_TIMEOUT_SEC: "0.35"
+      PID_ENABLED: "0"
+    inputs:
+      tick: dora/timer/millis/50
+    outputs:
+      - Odometry
+
+  - id: karto_slam
+    path: ../build/modules/mapping/karto_slam_dora/karto_slam_dora_node
+    env:
+      CONFIG_FILE: ../modules/mapping/karto_slam_dora/config/config.yaml
+    inputs:
+      LaserScan: ydlidar_tmini_plus/LaserScan
+      Odometry: feetech_kiwi_chassis/Odometry
+      tick: dora/timer/millis/50
+    outputs:
+      - pose
+      - slam_status
+      - safety_stop

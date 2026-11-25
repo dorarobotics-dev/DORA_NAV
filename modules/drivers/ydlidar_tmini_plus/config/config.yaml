@@ -1,0 +1,15 @@
+# YDLIDAR T-mini Plus driver parameters.
+# Values can be overridden by the corresponding uppercase environment variable.
+serial_port: /dev/ttyUSB0
+serial_baud: 230400
+frame_id: lidar
+output_id: LaserScan
+scan_frequency_hz: 10.0
+target_point_count: 450
+angle_min_deg: 0.0
+angle_max_deg: 360.0
+range_min: 0.05
+range_max: 12.0
+clockwise: false
+# Comma-separated degree windows, e.g. "80-100,300-320"; empty disables masking.
+mask_angle_ranges_deg: ""

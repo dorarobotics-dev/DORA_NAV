@@ -1,0 +1,30 @@
+nodes:
+  - id: ydlidar_tmini_plus
+    path: ../build/modules/drivers/ydlidar_tmini_plus/ydlidar_tmini_plus_dora_node
+    env:
+      CONFIG_FILE: ../modules/drivers/ydlidar_tmini_plus/config/config.yaml
+    inputs:
+      tick: dora/timer/millis/100
+    outputs:
+      - LaserScan
+
+  # Existing DORA_NAV chassis supplies wheel odometry; no velocity input here.
+  - id: ranger_miniv3_node
+    path: ../build/modules/chassis/ranger_dora_node/ranger_miniv3_node
+    inputs:
+      timer: dora/timer/millis/10
+    outputs:
+      - Odometry
+
+  - id: karto_slam
+    path: ../build/modules/mapping/karto_slam_dora/karto_slam_dora_node
+    env:
+      CONFIG_FILE: ../modules/mapping/karto_slam_dora/config/config.yaml
+    inputs:
+      LaserScan: ydlidar_tmini_plus/LaserScan
+      Odometry: ranger_miniv3_node/Odometry
+      tick: dora/timer/millis/50
+    outputs:
+      - pose
+      - slam_status
+      - safety_stop

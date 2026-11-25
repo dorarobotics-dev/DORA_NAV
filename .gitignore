@@ -4,3 +4,6 @@
 build/
 out/
 CLAUDE.md
+.DS_Store
+build-offline/
+.offline-deps/

@@ -98,10 +98,11 @@ enum class RangerSubType {
 // 运动模式常量（来自 ranger 协议）
 // ============================================================================
 namespace MotionMode {
-  constexpr uint8_t DUAL_ACKERMAN = 0;
-  constexpr uint8_t PARALLEL      = 1;
-  constexpr uint8_t SPINNING      = 2;
-  constexpr uint8_t SIDE_SLIP     = 3;
+  constexpr uint8_t DUAL_ACKERMAN = RangerInterface::MotionMode::kDualAckerman;
+  constexpr uint8_t PARALLEL      = RangerInterface::MotionMode::kParallel;
+  constexpr uint8_t SPINNING      = RangerInterface::MotionMode::kSpinning;
+  constexpr uint8_t PARK          = RangerInterface::MotionMode::kPark;
+  constexpr uint8_t SIDE_SLIP     = RangerInterface::MotionMode::kSideSlip;
 }
 
 // ============================================================================
@@ -218,6 +219,8 @@ private:
   // ------------------------------------------------------------------------
   void handleTimer() {
     auto state = robot_->GetRobotState();
+    // Remote/manual control can change mode without a Dora cmd_vel input.
+    motion_mode_ = state.motion_mode_state.motion_mode;
     auto now = std::chrono::steady_clock::now();
 
     if (!odom_state_.initialized) {
@@ -240,7 +243,13 @@ private:
     float angular_z = state.motion_state.angular_velocity;
 
     // 根据当前运动模式调整速度分量
-    if (motion_mode_ == MotionMode::PARALLEL) {
+    if (motion_mode_ == MotionMode::PARK) {
+      linear_x = 0.0f;
+      linear_y = 0.0f;
+      angular_z = 0.0f;
+    } else if (motion_mode_ == MotionMode::SPINNING) {
+      linear_x = 0.0f;
+    } else if (motion_mode_ == MotionMode::PARALLEL) {
       float phi = state.motion_state.steering_angle;
       linear_x = state.motion_state.linear_velocity * std::cos(phi);
       linear_y = state.motion_state.linear_velocity * std::sin(phi);
@@ -251,8 +260,9 @@ private:
       angular_z = 0.0f;
     }
 
-    // 运动学积分
-    updateOdometry(linear_x, angular_z,
+    // The motion models apply steering themselves. Pass the original speed,
+    // rather than projecting it twice or passing SIDE_SLIP's zero forward speed.
+    updateOdometry(state.motion_state.linear_velocity, angular_z,
                    state.motion_state.steering_angle, dt);
 
     // 发布里程计
@@ -423,6 +433,9 @@ private:
   // ------------------------------------------------------------------------
   void publishOdometry(float vx, float vy, float wz) {
     json j;
+    // Timestamp the state readout on the same Unix clock used by LiDAR scans.
+    j["header"]["timestamp"] = std::chrono::duration<double>(
+        std::chrono::system_clock::now().time_since_epoch()).count();
 
     // pose
     j["pose"]["position"]["x"] = odom_state_.x;

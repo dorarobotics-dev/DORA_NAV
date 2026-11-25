@@ -1,0 +1,13 @@
+[package]
+name = "feetech-kiwi-chassis-sdk-node"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.95"
+
+[dependencies]
+anyhow = "1"
+dora-node-api = { version = "=1.1.0", default-features = false }
+feetech-servo-sdk = "0.3.0"
+serde_json = "1"
+tokio = { version = "1", features = ["rt", "macros", "time"] }
+

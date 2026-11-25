@@ -1,0 +1,8 @@
+nodes:
+  # Parameters are read from modules/drivers/ydlidar_tmini_plus/config/config.yaml.
+  - id: ydlidar_tmini_plus
+    path: ../build/modules/drivers/ydlidar_tmini_plus/ydlidar_tmini_plus_dora_node
+    inputs:
+      tick: dora/timer/millis/100
+    outputs:
+      - LaserScan
