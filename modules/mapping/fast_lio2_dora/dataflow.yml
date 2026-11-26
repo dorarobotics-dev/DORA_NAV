@@ -1,0 +1,21 @@
+nodes:
+  - id: livox_driver
+    path: ../../../build/modules/drivers/livox_driver/livox_dora_driver
+    env:
+      LIVOX_CONFIG_FILE: ../../drivers/livox_driver/config/MID360_config.json
+      LIVOX_PUBLISH_TIMED_POINTCLOUD: "true"
+    outputs: [pointcloud, pointcloud_timed, imu]
+
+  - id: fast_lio2
+    path: ../../../build/modules/mapping/fast_lio2_dora/fast_lio2_dora_node
+    env:
+      FAST_LIO2_CONFIG_FILE: config/config.yaml
+    inputs:
+      pointcloud_timed:
+        source: livox_driver/pointcloud_timed
+        queue_size: 32
+      imu:
+        source: livox_driver/imu
+        queue_size: 4000
+      tick: dora/timer/millis/500
+    outputs: [pose, pointcloud, full_map, status]

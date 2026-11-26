@@ -28,10 +28,15 @@
 #include <csignal>
 #include <thread>
 #include <string>
+#include <cstdlib>
 #include "livox_ros_driver2.h"
 #include "dora_node.h"
 #include "lddc_dora.h"
 #include "lds_lidar.h"
+#include "timed_pointcloud.hpp"
+#include "comm/pub_handler.h"
+#include <fstream>
+#include <nlohmann/json.hpp>
 
 extern "C"{
 #include "node_api.h"
@@ -41,6 +46,35 @@ using namespace livox_ros;
 
 int main(int argc, char **argv) {
   std::cout << "Livox Dora Driver Version: " << LIVOX_ROS_DRIVER2_VERSION_STRING << std::endl;
+
+  bool publish_timed_pointcloud = false;
+  std::string user_config_path = "../modules/drivers/livox_driver/config/MID360_config.json";
+  try {
+    publish_timed_pointcloud =
+        ParseTimedPointCloudEnabled(std::getenv("LIVOX_PUBLISH_TIMED_POINTCLOUD"));
+    if (const char* config_path = std::getenv("LIVOX_CONFIG_FILE")) {
+      if (*config_path == '\0') {
+        throw std::invalid_argument("LIVOX_CONFIG_FILE must not be empty");
+      }
+      user_config_path = config_path;
+    }
+    if (publish_timed_pointcloud) {
+      std::ifstream input(user_config_path);
+      if (!input) throw std::invalid_argument("cannot read LIVOX_CONFIG_FILE");
+      const auto config = nlohmann::json::parse(input);
+      const auto& devices = config.at("lidar_configs");
+      if (!devices.is_array() || devices.size() != 1)
+        throw std::invalid_argument("timed mapping requires exactly one Livox device");
+      const auto& extrinsic = devices.at(0).at("extrinsic_parameter");
+      for (const auto* key : {"roll", "pitch", "yaw", "x", "y", "z"}) {
+        if (extrinsic.at(key).get<double>() != 0.0)
+          throw std::invalid_argument("timed mapping requires identity driver extrinsics; calibrate in FAST-LIO2 YAML");
+      }
+    }
+  } catch (const std::exception& error) {
+    std::cerr << "Invalid Livox configuration: " << error.what() << std::endl;
+    return 1;
+  }
 
   // ── Dora context ──────────────────────────────────────────────────────────
   void *dora_context = init_dora_context_from_env();
@@ -62,11 +96,21 @@ int main(int argc, char **argv) {
 
   std::cout << "Point-cloud publish frequency: " << publish_freq << " Hz" << std::endl;
   std::cout << "IMU publish rate: hardware-driven (200 Hz for MID360)" << std::endl;
+  if (publish_timed_pointcloud) {
+    std::cout << "Timed pointcloud output enabled: DLIOPC01, nanosecond offsets" << std::endl;
+  }
+  pub_handler().RequireSensorTimestamps(publish_timed_pointcloud);
 
   // ── Create LDDC and register LDS ─────────────────────────────────────────
-  dora_node.lddc_ptr_ = std::make_unique<LddcDora>(
-      xfer_format, multi_topic, data_src, output_type,
-      publish_freq, frame_id, &dora_node);
+  try {
+    dora_node.lddc_ptr_ = std::make_unique<LddcDora>(
+        xfer_format, multi_topic, data_src, output_type,
+        publish_freq, frame_id, &dora_node, publish_timed_pointcloud);
+  } catch (const std::exception& error) {
+    std::cerr << "Invalid Livox configuration: " << error.what() << std::endl;
+    free_dora_context(dora_context);
+    return 1;
+  }
 
   if (data_src != kSourceRawLidar) {
     std::cerr << "Invalid data src (" << data_src << "), only raw lidar is supported" << std::endl;
@@ -76,8 +120,6 @@ int main(int argc, char **argv) {
 
   std::cout << "Data Source is raw lidar." << std::endl;
 
-  std::string user_config_path =
-      "../modules/drivers/livox_driver/config/MID360_config.json";
   std::cout << "Config file: " << user_config_path << std::endl;
 
   LdsLidar *read_lidar = LdsLidar::GetInstance(publish_freq);

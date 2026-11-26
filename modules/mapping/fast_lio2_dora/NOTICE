@@ -1,0 +1,33 @@
+FAST-LIO2 Rust core provenance
+
+The algorithm sources in src/core/fast_lio were imported from the local
+FAST-LIO-main snapshot of https://github.com/DoraCN/FAST-LIO (crate version
+0.1.0). That snapshot has no Git metadata, so no upstream commit identifier
+can be established from the supplied files. Hardware driver, map, navigation,
+and application crates from that workspace are not included.
+
+The Rust project attributes its port to FAST-LIO2, ikd-Tree and IKFoM/MTK:
+https://github.com/hku-mars/FAST_LIO
+https://github.com/hku-mars/ikd-Tree
+https://github.com/hku-mars/IKFoM
+
+The supplied Rust Cargo metadata and core README declare MIT OR Apache-2.0;
+the supplied LICENSE-MIT and LICENSE-APACHE are retained without alteration.
+Its top-level README describes original ported-code notices as BSD-style,
+whereas the official FAST_LIO repository has a GPL-2.0 LICENSE. These source
+statements are inconsistent. This import does not resolve or supersede
+upstream licensing: the redistribution authorization and required notices
+must be clarified with the relevant authors before community publication.
+
+Local changes for Dora integration are limited to standalone crate metadata,
+fixed IMU/LiDAR time-offset handling, row-major rotation configuration, and
+scan-end timestamps for result states, and read-only access to initialized-map
+status, pending input counts, and registered/undistorted scans. Working scan
+points are cleared before IMU processing so an empty IMU group cannot reuse
+a prior scan. Per-line preprocessing buffers are resized to the configured
+scan count at each message entry point instead of retaining the constructor
+allocation for six scan lines. Direct Avia odometry mode no longer reserves
+the entire frame in each unused scan-line buffer. After initialization, scans
+with fewer than five effective scan-to-map correspondences do not enter the
+local map; their result remains visible for the caller to reject/report.
+No ROS runtime interfaces or hardware acquisition layer were imported.

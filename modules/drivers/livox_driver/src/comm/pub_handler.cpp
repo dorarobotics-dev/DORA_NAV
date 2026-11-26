@@ -102,6 +102,16 @@ void PubHandler::OnLivoxLidarPointCloudCallback(uint32_t handle, const uint8_t d
     return;
   }
 
+  if (self->require_sensor_timestamps_ &&
+      data->time_type != kTimestampTypeGptpOrPtp && data->time_type != kTimestampTypeGps) {
+    if (!self->timestamp_warning_reported_.exchange(true)) {
+      std::cerr << "Timed pointcloud requires PTP/GPS sensor timestamps; dropping unsynchronized "
+                   "LiDAR and IMU packets. Configure clock synchronization before mapping."
+                << std::endl;
+    }
+    return;
+  }
+
   if (data->time_type != kTimestampTypeNoSync) {
     is_timestamp_sync_.store(true);
   } else {

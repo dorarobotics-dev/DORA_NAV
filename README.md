@@ -2,6 +2,9 @@
 
 DORA-NAV 的目标是提供面向软硬件融合场景提供一体化导航整体方案，操作系统侧支持 Linux、开源鸿蒙、OpenEuler，硬件平台兼容 X86、NVIDIA Jetson、昇腾、此芯全系列算力设备。
 
+三维建图新增可选的 [FAST-LIO2 Rust Dora 模块](modules/mapping/fast_lio2_dora/README.md)，
+使用 Dora 1.1.0 接收 Livox 点云与 IMU，启动入口为 `apps/mapping_fast_lio2.yml`。
+
 
 
 开发者：(qiuji chen)2276606574@qq.com  、 cenruping@vip.qq.com  、 bob

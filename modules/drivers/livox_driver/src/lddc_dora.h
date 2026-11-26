@@ -66,7 +66,7 @@ class DoraNode;
 class LddcDora final {
  public:
   LddcDora(int format, int multi_topic, int data_src, int output_type, double frq,
-      std::string &frame_id, DoraNode* dora_node);
+      std::string &frame_id, DoraNode* dora_node, bool publish_timed_pointcloud = false);
   ~LddcDora();
 
   int  RegisterLds(Lds *lds);
@@ -120,6 +120,7 @@ class LddcDora final {
   std::string frame_id_;
 
   DoraNode* dora_node_;
+  bool publish_timed_pointcloud_;
 
   // ── background threads (same lifecycle pattern as official driver) ────────
   std::shared_ptr<std::thread> pcd_thread_;

@@ -27,6 +27,7 @@
 #include "comm/comm.h"
 #include "dora_node.h"
 #include "lds_lidar.h"
+#include "timed_pointcloud.hpp"
 
 #include <inttypes.h>
 #include <iostream>
@@ -42,7 +43,7 @@ namespace livox_ros {
 
 /** Lidar Data Distribute Control for Dora--------------------------------------------*/
 LddcDora::LddcDora(int format, int multi_topic, int data_src, int output_type,
-    double frq, std::string &frame_id, DoraNode* dora_node)
+    double frq, std::string &frame_id, DoraNode* dora_node, bool publish_timed_pointcloud)
     : transfer_format_(format),
       use_multi_topic_(multi_topic),
       data_src_(data_src),
@@ -50,8 +51,12 @@ LddcDora::LddcDora(int format, int multi_topic, int data_src, int output_type,
       publish_frq_(frq),
       frame_id_(frame_id),
       dora_node_(dora_node),
+      publish_timed_pointcloud_(publish_timed_pointcloud),
       lds_(nullptr),
       future_(exit_signal_.get_future()) {
+  if (publish_timed_pointcloud_ && use_multi_topic_) {
+    throw std::invalid_argument("pointcloud_timed requires single-topic Livox mode");
+  }
   publish_period_ns_ = kNsPerSecond / publish_frq_;
   std::cout << "LddcDora initialized with publish frequency: " << publish_frq_ << " Hz" << std::endl;
 }
@@ -196,8 +201,24 @@ void LddcDora::PublishPointcloud2(LidarDataQueue *queue, uint8_t index) {
       continue;
     }
 
+    std::vector<char> timed_buf;
+    if (publish_timed_pointcloud_) {
+      try {
+        timed_buf = SerializeTimedPointCloud(pkg);
+      } catch (const std::exception& error) {
+        std::cerr << "Dropped invalid timed point cloud: " << error.what() << std::endl;
+        continue;
+      }
+    }
+
     std::vector<char> buf = SerializePointCloudToBinary(pkg);
     PublishPointCloudBinary(buf, index);
+    if (publish_timed_pointcloud_) {
+      if (!dora_node_ || dora_node_->SendOutput(
+              "pointcloud_timed", std::string(timed_buf.data(), timed_buf.size())) != 0) {
+        std::cerr << "Failed to publish pointcloud_timed" << std::endl;
+      }
+    }
   }
 }
 

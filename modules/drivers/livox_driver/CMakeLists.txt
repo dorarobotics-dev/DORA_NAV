@@ -7,12 +7,20 @@ find_library(LIVOX_SDK_LIBRARY
     PATHS /usr/local/lib /usr/lib
     REQUIRED
 )
+find_path(LIVOX_SDK_INCLUDE_DIR livox_lidar_api.h
+    HINTS "${CMAKE_SOURCE_DIR}/third_party/Livox-SDK2/include"
+    PATHS /usr/local/include /usr/include
+)
+if(NOT LIVOX_SDK_INCLUDE_DIR)
+    message(FATAL_ERROR "Livox SDK2 headers not found; set LIVOX_SDK_INCLUDE_DIR")
+endif()
 
 include_directories(
     src
     src/include
     3rdparty
     ${DORA_INCLUDE_DIR}
+    ${LIVOX_SDK_INCLUDE_DIR}
 )
 
 add_executable(${PROJECT_NAME}

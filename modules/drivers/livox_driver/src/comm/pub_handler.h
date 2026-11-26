@@ -90,11 +90,15 @@ class PubHandler {
   void AddLidarsExtParam(LidarExtParameter& extrinsic_params);
   void ClearAllLidarsExtrinsicParams();
   void SetImuDataCallback(ImuDataCallback cb, void* client_data);
+  // Configure before starting SDK callbacks. Timed LIO data must use PTP/GPS time.
+  void RequireSensorTimestamps(bool required) { require_sensor_timestamps_ = required; }
 
  private:
   //thread to process raw data
   void RawDataProcess();
   std::atomic<bool> is_quit_{false};
+  bool require_sensor_timestamps_ = false;
+  std::atomic<bool> timestamp_warning_reported_{false};
   std::shared_ptr<std::thread> point_process_thread_;
   std::mutex packet_mutex_;
   std::condition_variable packet_condition_;

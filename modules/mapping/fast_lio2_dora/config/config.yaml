@@ -1,0 +1,49 @@
+# Livox MID360 timed point cloud + IMU. Keep the sensor stationary during initialization.
+lidar:
+  n_scans: 4
+  scan_rate: 10
+  blind: 0.5
+  point_filter_num: 2
+
+imu:
+  acceleration_scale: 9.80665  # Existing Livox driver publishes g; use 1.0 for m/s^2.
+  # Aligned IMU time = IMU timestamp - this offset, in seconds.
+  time_offset_lidar_to_imu: 0.0
+  gyr_cov: 0.1
+  acc_cov: 0.1
+  b_gyr_cov: 0.0001
+  b_acc_cov: 0.0001
+
+mapping:
+  filter_size_surf: 0.3
+  filter_size_map: 0.3
+  cube_len: 300.0
+  det_range: 80.0
+  max_iteration: 4
+  extrinsic_est_en: false
+
+extrinsics:
+  # p_imu = R_imu_lidar * p_lidar + t_imu_lidar.
+  # Replace these identity placeholders with the device calibration before hardware use.
+  translation: [0.0, 0.0, 0.0]
+  rotation: [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0] # Row-major.
+
+tracking:
+  lost_after_frames: 5  # Consecutive rejected scans after the first valid pose.
+  pose_timeout: 1.0     # Seconds without a new valid pose; checked on tick too.
+
+output:
+  # Relative to this YAML's directory. PCD is accumulated in world coordinates.
+  map_path: ../../../../maps/fast_lio2/map.pcd
+  voxel_size: 0.2
+  publish_every_n_frames: 10
+  max_points: 2000000
+
+buffers:
+  max_imu_samples: 4000
+  max_pending_scans: 32
+  max_scan_duration: 0.5
+  max_points_per_scan: 200000
+  max_imu_gap: 0.1
+  max_scan_gap: 1.0
+  sensor_timeout: 10.0

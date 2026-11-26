@@ -1,0 +1,17 @@
+[package]
+name = "fast_lio2_dora_node"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.95"
+
+[dependencies]
+anyhow = "1"
+dora-node-api = { version = "=1.1.0", default-features = false }
+fast-lio = { path = "src/core/fast_lio" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_yaml = "0.9"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
